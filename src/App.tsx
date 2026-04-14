@@ -1,7 +1,6 @@
 import { Maximize2, Mic, MicOff, Radio, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import GlyphOverlay from './components/GlyphOverlay';
 import Visualizer from './components/Visualizer';
 import { AudioEngine, ReactiveState } from './lib/AudioEngine';
 
@@ -84,7 +83,6 @@ export default function App() {
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: '#090509' }}>
       <Visualizer audio={audio} onReactiveState={setReactive} />
-      <GlyphOverlay intensity={reactive.shimmer + reactive.impulse * 0.8} />
 
       <div
         style={{
