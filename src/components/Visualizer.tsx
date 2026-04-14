@@ -32,6 +32,7 @@ uniform float uSceneSpread;
 uniform float uColorWarmth;
 uniform float uFoldDensity;
 uniform float uRidgeSharpness;
+uniform sampler2D uTextTex;
 
 vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
 
@@ -80,44 +81,35 @@ float hash21(vec2 p) {
   return fract(p.x * p.y);
 }
 
-float segment(vec2 uv, vec2 a, vec2 b, float width) {
-  vec2 pa = uv - a;
-  vec2 ba = b - a;
-  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-  return 1.0 - smoothstep(width, width + 0.012, length(pa - ba * h));
-}
+vec3 sampleEmbeddedGlyphs(vec2 uv, vec2 cloth, float folds, float ridgeMask, float silk, float creamPeaks, vec3 gasolineTint, float t) {
+  vec2 textUv = uv;
+  textUv.x *= uResolution.x / uResolution.y;
+  textUv *= vec2(0.84, 0.82);
+  textUv += cloth * 0.075;
+  textUv += vec2(t * 0.008, -t * 0.014);
+  textUv += vec2(
+    snoise(cloth * 2.0 + vec2(t * 0.12, -t * 0.08)),
+    snoise(cloth * 2.2 + vec2(-t * 0.09, t * 0.11))
+  ) * 0.016;
 
-float glyphShape(vec2 uv, float id) {
-  float shape = 0.0;
-  if (id < 0.2) {
-    shape = max(segment(uv, vec2(0.22, 0.2), vec2(0.78, 0.2), 0.018), segment(uv, vec2(0.22, 0.8), vec2(0.78, 0.8), 0.018));
-    shape = max(shape, segment(uv, vec2(0.32, 0.28), vec2(0.68, 0.72), 0.014));
-  } else if (id < 0.4) {
-    shape = max(segment(uv, vec2(0.5, 0.18), vec2(0.5, 0.82), 0.018), segment(uv, vec2(0.2, 0.5), vec2(0.8, 0.5), 0.018));
-  } else if (id < 0.6) {
-    shape = max(segment(uv, vec2(0.28, 0.22), vec2(0.72, 0.78), 0.015), segment(uv, vec2(0.72, 0.22), vec2(0.28, 0.78), 0.015));
-  } else if (id < 0.8) {
-    shape = max(segment(uv, vec2(0.26, 0.2), vec2(0.26, 0.8), 0.016), segment(uv, vec2(0.74, 0.2), vec2(0.74, 0.8), 0.016));
-    shape = max(shape, segment(uv, vec2(0.26, 0.2), vec2(0.74, 0.2), 0.016));
-    shape = max(shape, segment(uv, vec2(0.26, 0.8), vec2(0.74, 0.8), 0.016));
-  } else {
-    shape = max(segment(uv, vec2(0.32, 0.2), vec2(0.68, 0.2), 0.016), segment(uv, vec2(0.32, 0.5), vec2(0.68, 0.5), 0.016));
-    shape = max(shape, segment(uv, vec2(0.32, 0.8), vec2(0.68, 0.8), 0.016));
-    shape = max(shape, segment(uv, vec2(0.32, 0.2), vec2(0.32, 0.8), 0.016));
-  }
-  return shape;
-}
+  float ca = 0.0025 + uShimmer * 0.002;
+  vec2 textUv2 = textUv * vec2(1.37, 1.21) + vec2(0.18, -0.11);
+  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.6, 0.0)).r * 0.72);
+  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.72);
+  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.6, 0.0)).r * 0.72);
+  vec3 glyph = vec3(textR, textG, textB);
 
-float ghostGlyphVeil(vec2 uv, vec2 flowUv, float shadowMask, float edgeMask, float t) {
-  vec2 gridUv = uv * vec2(7.0, 4.2) + flowUv * 0.22;
-  vec2 cell = floor(gridUv);
-  vec2 local = fract(gridUv);
-  float seed = hash21(cell + floor(t * 0.05));
-  float presence = smoothstep(0.46, 0.84, seed);
-  float glyph = glyphShape(local, fract(seed * 6.13 + floor(t * 0.014) * 0.11));
-  float driftNoise = smoothstep(0.05, 0.7, snoise(cell * 0.24 + flowUv * 0.45 + t * 0.018));
-  float reveal = smoothstep(-0.55, 0.75, sin((uv.x * 1.35 + uv.y * 0.9) * 3.2 + t * 0.06));
-  return glyph * presence * driftNoise * reveal * shadowMask * (0.62 + edgeMask * 0.95);
+  float textLum = dot(glyph, vec3(0.3333));
+  float midMask = smoothstep(0.1, 0.7, folds + silk * 0.22) * (1.0 - smoothstep(0.78, 1.05, creamPeaks + silk * 0.22));
+  float shadowMask = smoothstep(0.98, 0.2, creamPeaks + ridgeMask * 0.14);
+  float edgeMask = smoothstep(0.16, 0.88, ridgeMask + silk * 0.22 + uFlow * 0.12);
+  float dissolve = smoothstep(0.24, 0.82, snoise(cloth * 4.1 + vec2(t * 0.18, -t * 0.12)) * 0.5 + 0.5);
+  float emergence = smoothstep(0.04, 0.5, textLum);
+  float visibility = emergence * midMask * shadowMask * edgeMask * dissolve;
+  visibility = pow(visibility, 0.78);
+
+  vec3 paleInk = mix(vec3(0.82, 0.99, 0.9), gasolineTint, 0.58);
+  return paleInk * glyph * visibility * (0.62 + uShimmer * 0.18 + uImpulse * 0.12);
 }
 
 void main() {
@@ -183,13 +175,10 @@ void main() {
   float acidMask = pow(ridgeMask, 1.05) * smoothstep(0.34, 1.0, creamPeaks + edgeNoise * 0.5 + silk * 0.22);
   vec3 gasoline = gasolinePalette(folds * 0.24 + q.x * 0.16 - q.y * 0.12 + t * 0.18);
   vec3 gasolineTint = mix(vec3(0.78, 1.0, 0.88), gasoline, 0.9);
-  color += gasolineTint * acidMask * (0.24 + uFlow * 0.12 + uImpulse * 0.08);
-  color += gasolineTint * smoothstep(0.54, 0.96, ridgeMask + edgeNoise * 0.24 + silk * 0.08) * 0.08;
+  color += gasolineTint * acidMask * (0.28 + uFlow * 0.14 + uImpulse * 0.1);
+  color += gasolineTint * smoothstep(0.54, 0.96, ridgeMask + edgeNoise * 0.24 + silk * 0.08) * 0.1;
 
-  float shadowMask = smoothstep(0.88, 0.26, creamPeaks + mass4 * 0.1 + ridgeMask * 0.14);
-  float glyphField = ghostGlyphVeil(uv, cloth, shadowMask, ridgeMask, uTime);
-  vec3 glyphColor = mix(vec3(0.84, 1.0, 0.92), gasolineTint, 0.62);
-  color += glyphColor * glyphField * (0.18 + uShimmer * 0.05);
+  color += sampleEmbeddedGlyphs(uv, cloth, folds, ridgeMask, silk, creamPeaks, gasolineTint, uTime);
 
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.03;
@@ -211,20 +200,95 @@ type VisualizerProps = {
   onReactiveState: (state: ReactiveState) => void;
 };
 
-const INITIAL_REACTIVE_STATE: ReactiveState = {
-  bass: 0.2,
-  flow: 0.22,
-  shimmer: 0.1,
-  energy: 0.2,
-  impulse: 0,
-  mode: 'autopilot',
-  micAvailable: false,
-};
+function createTextTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    const fallback = new THREE.Texture();
+    fallback.needsUpdate = true;
+    return fallback;
+  }
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const fragments = ['0x0D', '2WD', '17 31', '100 0100', '2501', 'A', 'R', '::', '//', '[ ]', '01', '+', '<>', '{}'];
+  const cols = 28;
+  const rows = 34;
+  const cellW = canvas.width / cols;
+  const cellH = canvas.height / rows;
+
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      const seed = Math.sin(x * 93.17 + y * 17.31) * 43758.5453;
+      const n = seed - Math.floor(seed);
+      if (n < 0.68) continue;
+
+      const fragment = fragments[Math.floor(n * fragments.length) % fragments.length];
+      const alpha = 0.16 + ((n * 7.0) % 1.0) * 0.34;
+      const size = 14 + ((n * 13.0) % 1.0) * 12;
+      const hue = 108 + ((n * 23.0) % 1.0) * 44;
+      const sat = 18 + ((n * 31.0) % 1.0) * 24;
+      const light = 72 + ((n * 41.0) % 1.0) * 14;
+      const offsetX = ((((n * 53.0) % 1.0) - 0.5) * cellW) * 0.22;
+      const offsetY = ((((n * 67.0) % 1.0) - 0.5) * cellH) * 0.22;
+      const rotation = ((((n * 79.0) % 1.0) - 0.5) * 0.1);
+
+      ctx.save();
+      ctx.translate(x * cellW + cellW * 0.5 + offsetX, y * cellH + cellH * 0.5 + offsetY);
+      ctx.rotate(rotation);
+      ctx.font = `600 ${size}px monospace`;
+      ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = `hsla(${hue + 30}, ${sat + 10}%, 86%, ${alpha * 0.35})`;
+      ctx.fillText(fragment, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  const heroFragments = [
+    { text: '0x0D', x: 0.18, y: 0.24, size: 44, alpha: 0.5, rot: -0.12 },
+    { text: '2WD', x: 0.76, y: 0.33, size: 52, alpha: 0.52, rot: 0.08 },
+    { text: '17 31', x: 0.58, y: 0.68, size: 42, alpha: 0.46, rot: -0.06 },
+    { text: '100 0100', x: 0.34, y: 0.78, size: 38, alpha: 0.4, rot: 0.05 },
+    { text: '2501', x: 0.7, y: 0.14, size: 34, alpha: 0.38, rot: 0.02 },
+    { text: 'A', x: 0.42, y: 0.2, size: 58, alpha: 0.34, rot: -0.09 },
+    { text: 'R', x: 0.84, y: 0.74, size: 56, alpha: 0.34, rot: 0.11 },
+  ];
+
+  for (const hero of heroFragments) {
+    const hue = hero.text === 'A' || hero.text === 'R' ? 118 : 132;
+    ctx.save();
+    ctx.translate(canvas.width * hero.x, canvas.height * hero.y);
+    ctx.rotate(hero.rot);
+    ctx.font = `700 ${hero.size}px monospace`;
+    ctx.fillStyle = `hsla(${hue}, 28%, 84%, ${hero.alpha})`;
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = `hsla(${hue + 24}, 44%, 90%, ${hero.alpha * 0.46})`;
+    ctx.fillText(hero.text, 0, 0);
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
 
 function BackgroundPlane({ audio, onReactiveState, reactiveRef }: VisualizerProps & { reactiveRef: MutableRefObject<ReactiveState> }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const lastUiSyncRef = useRef(0);
   const { viewport, size } = useThree();
+
+  const textTexture = useMemo(() => createTextTexture(), []);
 
   const uniforms = useMemo(
     () => ({
@@ -239,13 +303,21 @@ function BackgroundPlane({ audio, onReactiveState, reactiveRef }: VisualizerProp
       uColorWarmth: { value: 0.93 },
       uFoldDensity: { value: 0.82 },
       uRidgeSharpness: { value: 0.19 },
+      uTextTex: { value: textTexture },
     }),
-    [size.height, size.width],
+    [size.height, size.width, textTexture],
   );
 
   useEffect(() => {
     uniforms.uResolution.value.set(size.width, size.height);
   }, [size.height, size.width, uniforms]);
+
+  useEffect(() => {
+    uniforms.uTextTex.value = textTexture;
+    return () => {
+      textTexture.dispose();
+    };
+  }, [textTexture, uniforms]);
 
   useFrame((state) => {
     const reactive = audio.getReactiveState(state.clock.elapsedTime);
@@ -273,6 +345,7 @@ function BackgroundPlane({ audio, onReactiveState, reactiveRef }: VisualizerProp
     materialRef.current.uniforms.uColorWarmth.value = colorWarmth;
     materialRef.current.uniforms.uFoldDensity.value = foldDensity;
     materialRef.current.uniforms.uRidgeSharpness.value = ridgeSharpness;
+    materialRef.current.uniforms.uTextTex.value = textTexture;
   });
 
   return (
