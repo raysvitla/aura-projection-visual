@@ -84,29 +84,52 @@ float hash21(vec2 p) {
 vec3 sampleEmbeddedGlyphs(vec2 uv, vec2 cloth, float folds, float ridgeMask, float silk, float creamPeaks, vec3 gasolineTint, float t) {
   vec2 textUv = uv;
   textUv.x *= uResolution.x / uResolution.y;
-  textUv *= vec2(0.82, 0.85);
-  textUv += cloth * 0.016;
-  textUv += vec2(t * 0.004, -t * 0.007);
+  textUv *= vec2(0.68, 0.72);
+  textUv += cloth * 0.012;
+  textUv += vec2(t * 0.003, -t * 0.005);
   textUv += vec2(
-    snoise(cloth * 1.7 + vec2(t * 0.12, -t * 0.08)),
-    snoise(cloth * 1.9 + vec2(-t * 0.09, t * 0.11))
-  ) * 0.005;
+    snoise(cloth * 1.45 + vec2(t * 0.10, -t * 0.07)),
+    snoise(cloth * 1.55 + vec2(-t * 0.08, t * 0.09))
+  ) * 0.0035;
 
-  float ca = 0.004 + uShimmer * 0.003;
-  vec2 textUv2 = textUv * vec2(1.15, 1.09) + vec2(0.08, -0.05);
-  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.6, 0.0)).r * 0.65);
-  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.65);
-  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.6, 0.0)).r * 0.65);
+  float ca = 0.003 + uShimmer * 0.002;
+  vec2 textUv2 = textUv * vec2(1.04, 1.02) + vec2(0.05, -0.03);
+  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.45, 0.0)).r * 0.76);
+  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.76);
+  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.45, 0.0)).r * 0.76);
   vec3 glyph = vec3(textR, textG, textB);
 
   float textLum = dot(glyph, vec3(0.3333));
-  float emergence = smoothstep(0.015, 0.10, textLum);
-  float fabricMod = 0.45 + silk * 0.28 + folds * 0.27;
+  float emergence = smoothstep(0.01, 0.07, textLum);
+  float fabricMod = 0.65 + silk * 0.24 + folds * 0.18 + ridgeMask * 0.12;
   float visibility = emergence * fabricMod;
-  visibility = pow(visibility, 0.45);
+  visibility = pow(visibility, 0.32);
 
-  vec3 paleInk = mix(vec3(0.92, 1.0, 0.95), gasolineTint, 0.28);
-  return paleInk * glyph * visibility * (2.4 + uShimmer * 0.5 + uImpulse * 0.35);
+  vec3 paleInk = mix(vec3(0.94, 1.0, 0.96), gasolineTint, 0.22);
+  return paleInk * glyph * visibility * (2.9 + uShimmer * 0.55 + uImpulse * 0.4);
+}
+
+vec3 sampleEditorialBands(vec2 uv, vec2 cloth, vec3 gasolineTint, float silk, float t) {
+  vec2 bandUv = uv;
+  bandUv.x *= uResolution.x / uResolution.y;
+  bandUv *= vec2(0.46, 1.55);
+  bandUv += vec2(t * 0.0025, -t * 0.012);
+  bandUv += cloth * vec2(0.006, 0.018);
+
+  float ca = 0.0025;
+  float bandR = texture2D(uTextTex, bandUv + vec2(ca, 0.0)).r;
+  float bandG = texture2D(uTextTex, bandUv).r;
+  float bandB = texture2D(uTextTex, bandUv - vec2(ca, 0.0)).r;
+  vec3 bandGlyph = vec3(bandR, bandG, bandB);
+
+  float strataA = smoothstep(0.18, 0.32, sin(uv.y * 10.5 + t * 0.18) * 0.5 + 0.5);
+  float strataB = smoothstep(0.22, 0.38, sin(uv.y * 14.0 - t * 0.12 + 1.8) * 0.5 + 0.5);
+  float strata = max(strataA, strataB * 0.8);
+  float dissolve = smoothstep(0.28, 0.78, fbm(uv * 4.6 + cloth * 0.16 + vec2(t * 0.018, -t * 0.015)) * 0.5 + 0.5);
+  float visibility = dot(bandGlyph, vec3(0.3333)) * strata * dissolve * (0.42 + silk * 0.18);
+
+  vec3 bandInk = mix(vec3(0.88, 0.98, 0.92), gasolineTint, 0.3);
+  return bandInk * bandGlyph * visibility * 1.55;
 }
 
 void main() {
@@ -150,7 +173,10 @@ void main() {
   float mass3 = smoothstep(1.60, 0.20, length(mass3P * vec2(0.92, 0.88)) + fbm(cloth * 1.3 - 2.1) * 0.3);
   float mass4 = smoothstep(1.56, 0.16, length(mass4P * vec2(1.08, 0.8)) + fbm(cloth * 0.78 + 9.2) * 0.31);
 
-  vec3 color = vec3(0.105, 0.058, 0.092);
+  vec3 color = vec3(0.14, 0.08, 0.11);
+  float atmosphere = fbm(uv * 3.8 + vec2(t * 0.03, -t * 0.02)) * 0.5 + 0.5;
+  vec3 atmosphereBase = mix(vec3(0.12, 0.07, 0.1), vec3(0.2, 0.12, 0.15), atmosphere);
+  color = max(color, atmosphereBase);
   vec3 mass1Color = mix(vec3(0.15, 0.03, 0.18), vec3(0.23, 0.03, 0.06), uColorWarmth);
   vec3 mass2Color = mix(vec3(0.22, 0.12, 0.38), vec3(0.42, 0.16, 0.32), uColorWarmth);
   vec3 mass3Color = mix(vec3(0.56, 0.28, 0.62), vec3(0.78, 0.36, 0.48), uColorWarmth);
@@ -176,17 +202,18 @@ void main() {
   color += gasolineTint * smoothstep(0.54, 0.96, ridgeMask + edgeNoise * 0.24 + silk * 0.08) * 0.1;
 
   color += sampleEmbeddedGlyphs(uv, cloth, folds, ridgeMask, silk, creamPeaks, gasolineTint, uTime);
+  color += sampleEditorialBands(uv, cloth, gasolineTint, silk, uTime);
 
   float ambientFabric = fbm(cloth * 0.4 + vec2(t * 0.02)) * 0.5 + 0.5;
-  vec3 ambientFloor = mix(vec3(0.115, 0.068, 0.098), vec3(0.175, 0.105, 0.145), ambientFabric);
+  vec3 ambientFloor = mix(vec3(0.14, 0.08, 0.11), vec3(0.22, 0.13, 0.18), ambientFabric);
   color = max(color, ambientFloor);
 
   float edgeDist = length((uv - 0.5) * vec2(1.08, 0.94));
-  float edgeRing = smoothstep(0.22, 0.72, edgeDist);
-  float edgeSmoke = fbm(cloth * 0.5 + vec2(t * 0.035, -t * 0.025)) * 0.5 + 0.5;
-  vec3 edgeTint = mix(vec3(0.14, 0.07, 0.12), gasolineTint * 0.16, edgeSmoke);
-  color += edgeTint * edgeRing * edgeSmoke * 0.45;
-  color += ambientFloor * (1.0 - edgeRing) * 0.28;
+  float edgeRing = smoothstep(0.12, 0.78, edgeDist);
+  float edgeSmoke = fbm(uv * 5.0 + cloth * 0.25 + vec2(t * 0.04, -t * 0.03)) * 0.5 + 0.5;
+  vec3 edgeTint = mix(vec3(0.19, 0.10, 0.14), gasolineTint * 0.26, edgeSmoke);
+  color += edgeTint * (0.22 + edgeRing * 0.62) * edgeSmoke;
+  color += ambientFloor * (0.36 + edgeRing * 0.24);
 
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.018;
