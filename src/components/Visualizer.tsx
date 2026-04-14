@@ -84,30 +84,29 @@ float hash21(vec2 p) {
 vec3 sampleEmbeddedGlyphs(vec2 uv, vec2 cloth, float folds, float ridgeMask, float silk, float creamPeaks, vec3 gasolineTint, float t) {
   vec2 textUv = uv;
   textUv.x *= uResolution.x / uResolution.y;
-  textUv *= vec2(0.84, 0.82);
-  textUv += cloth * 0.055;
-  textUv += vec2(t * 0.008, -t * 0.014);
+  textUv *= vec2(0.82, 0.85);
+  textUv += cloth * 0.016;
+  textUv += vec2(t * 0.004, -t * 0.007);
   textUv += vec2(
-    snoise(cloth * 2.0 + vec2(t * 0.12, -t * 0.08)),
-    snoise(cloth * 2.2 + vec2(-t * 0.09, t * 0.11))
-  ) * 0.011;
+    snoise(cloth * 1.7 + vec2(t * 0.12, -t * 0.08)),
+    snoise(cloth * 1.9 + vec2(-t * 0.09, t * 0.11))
+  ) * 0.005;
 
   float ca = 0.004 + uShimmer * 0.003;
-  vec2 textUv2 = textUv * vec2(1.37, 1.21) + vec2(0.18, -0.11);
-  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.6, 0.0)).r * 0.55);
-  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.55);
-  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.6, 0.0)).r * 0.55);
+  vec2 textUv2 = textUv * vec2(1.15, 1.09) + vec2(0.08, -0.05);
+  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.6, 0.0)).r * 0.65);
+  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.65);
+  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.6, 0.0)).r * 0.65);
   vec3 glyph = vec3(textR, textG, textB);
 
   float textLum = dot(glyph, vec3(0.3333));
-  float emergence = smoothstep(0.05, 0.35, textLum);
-  float midTone = smoothstep(0.12, 0.55, folds + silk * 0.15) * (1.0 - smoothstep(0.85, 1.15, creamPeaks));
-  float dissolve = smoothstep(0.2, 0.75, snoise(cloth * 3.0 + vec2(t * 0.14, -t * 0.1)) * 0.5 + 0.5);
-  float visibility = emergence * midTone * dissolve;
-  visibility = pow(visibility, 0.55);
+  float emergence = smoothstep(0.015, 0.10, textLum);
+  float fabricMod = 0.45 + silk * 0.28 + folds * 0.27;
+  float visibility = emergence * fabricMod;
+  visibility = pow(visibility, 0.45);
 
-  vec3 paleInk = mix(vec3(0.86, 1.0, 0.93), gasolineTint, 0.42);
-  return paleInk * glyph * visibility * (0.88 + uShimmer * 0.2 + uImpulse * 0.15);
+  vec3 paleInk = mix(vec3(0.92, 1.0, 0.95), gasolineTint, 0.28);
+  return paleInk * glyph * visibility * (2.4 + uShimmer * 0.5 + uImpulse * 0.35);
 }
 
 void main() {
@@ -141,17 +140,17 @@ void main() {
   float ridgeMask = smoothstep(ridgeLow, ridgeHigh, ridges * 0.5 + 0.5);
 
   float spread = 0.72 + uSceneSpread * 0.95;
-  vec2 mass1P = q + vec2(0.74, 0.38) * spread;
-  vec2 mass2P = q + vec2(-0.08, 0.02) * spread;
-  vec2 mass3P = q + vec2(-0.72, -0.34) * spread;
-  vec2 mass4P = q + vec2(0.18, -0.58) * spread;
+  vec2 mass1P = q + vec2(0.88, 0.48) * spread;
+  vec2 mass2P = q + vec2(-0.12, 0.04) * spread;
+  vec2 mass3P = q + vec2(-0.86, -0.42) * spread;
+  vec2 mass4P = q + vec2(0.22, -0.68) * spread;
 
-  float mass1 = smoothstep(1.45, 0.12, length(mass1P * vec2(1.0, 0.86)) + fbm(cloth * 0.92) * 0.38);
-  float mass2 = smoothstep(1.42, 0.2, length(mass2P * vec2(0.96, 0.82)) + fbm(cloth * 1.11 + 4.2) * 0.34);
-  float mass3 = smoothstep(1.4, 0.22, length(mass3P * vec2(0.92, 0.88)) + fbm(cloth * 1.3 - 2.1) * 0.3);
-  float mass4 = smoothstep(1.36, 0.18, length(mass4P * vec2(1.08, 0.8)) + fbm(cloth * 0.78 + 9.2) * 0.31);
+  float mass1 = smoothstep(1.65, 0.10, length(mass1P * vec2(1.0, 0.86)) + fbm(cloth * 0.92) * 0.38);
+  float mass2 = smoothstep(1.62, 0.18, length(mass2P * vec2(0.96, 0.82)) + fbm(cloth * 1.11 + 4.2) * 0.34);
+  float mass3 = smoothstep(1.60, 0.20, length(mass3P * vec2(0.92, 0.88)) + fbm(cloth * 1.3 - 2.1) * 0.3);
+  float mass4 = smoothstep(1.56, 0.16, length(mass4P * vec2(1.08, 0.8)) + fbm(cloth * 0.78 + 9.2) * 0.31);
 
-  vec3 color = vec3(0.03, 0.015, 0.035);
+  vec3 color = vec3(0.105, 0.058, 0.092);
   vec3 mass1Color = mix(vec3(0.15, 0.03, 0.18), vec3(0.23, 0.03, 0.06), uColorWarmth);
   vec3 mass2Color = mix(vec3(0.22, 0.12, 0.38), vec3(0.42, 0.16, 0.32), uColorWarmth);
   vec3 mass3Color = mix(vec3(0.56, 0.28, 0.62), vec3(0.78, 0.36, 0.48), uColorWarmth);
@@ -179,19 +178,26 @@ void main() {
   color += sampleEmbeddedGlyphs(uv, cloth, folds, ridgeMask, silk, creamPeaks, gasolineTint, uTime);
 
   float ambientFabric = fbm(cloth * 0.4 + vec2(t * 0.02)) * 0.5 + 0.5;
-  vec3 ambientFloor = mix(vec3(0.032, 0.016, 0.038), vec3(0.038, 0.025, 0.042), ambientFabric);
+  vec3 ambientFloor = mix(vec3(0.115, 0.068, 0.098), vec3(0.175, 0.105, 0.145), ambientFabric);
   color = max(color, ambientFloor);
 
+  float edgeDist = length((uv - 0.5) * vec2(1.08, 0.94));
+  float edgeRing = smoothstep(0.22, 0.72, edgeDist);
+  float edgeSmoke = fbm(cloth * 0.5 + vec2(t * 0.035, -t * 0.025)) * 0.5 + 0.5;
+  vec3 edgeTint = mix(vec3(0.14, 0.07, 0.12), gasolineTint * 0.16, edgeSmoke);
+  color += edgeTint * edgeRing * edgeSmoke * 0.45;
+  color += ambientFloor * (1.0 - edgeRing) * 0.28;
+
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
-  color -= grain * 0.025;
+  color -= grain * 0.018;
 
-  float centerGlow = smoothstep(1.22, 0.18, length((uv - 0.5) * vec2(1.1, 0.92)));
-  color += vec3(0.026, 0.008, 0.02) * centerGlow;
+  float centerGlow = smoothstep(1.1, 0.15, edgeDist);
+  color += vec3(0.022, 0.007, 0.017) * centerGlow;
 
-  color = max(color - vec3(0.008), 0.0);
-  color = pow(color, vec3(0.98));
-  color = color * 1.03 + creamPeaks * 0.06;
-  color = smoothstep(vec3(0.012), vec3(1.0), color);
+  color = max(color - vec3(0.005), 0.0);
+  color = pow(color, vec3(0.97));
+  color = color * 1.04 + creamPeaks * 0.055;
+  color = smoothstep(vec3(0.006), vec3(1.0), color);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -204,8 +210,8 @@ type VisualizerProps = {
 
 function createTextTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 1024;
+  canvas.width = 2048;
+  canvas.height = 2048;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
@@ -219,9 +225,9 @@ function createTextTexture() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const fragments = ['0x0D', '2WD', '17 31', '2501', 'A', 'R', '::', '//', '[ ]', '01', '+', '<>', '{}', 'vec3', 'float', 'return'];
-  const cols = 16;
-  const rows = 20;
+  const fragments = ['0x0D', '2WD', '17 31', '2501', 'A', 'R', 'const', 'float', 'return', 'vec3(', '<aura/>', '//', '[ ]', '01'];
+  const cols = 8;
+  const rows = 10;
   const cellW = canvas.width / cols;
   const cellH = canvas.height / rows;
 
@@ -229,14 +235,14 @@ function createTextTexture() {
     for (let x = 0; x < cols; x += 1) {
       const seed = Math.sin(x * 93.17 + y * 17.31) * 43758.5453;
       const n = seed - Math.floor(seed);
-      if (n < 0.72) continue;
+      if (n < 0.42) continue;
 
       const fragment = fragments[Math.floor(n * fragments.length) % fragments.length];
-      const alpha = 0.5 + ((n * 7.0) % 1.0) * 0.5;
-      const size = 22 + ((n * 13.0) % 1.0) * 20;
-      const offsetX = ((((n * 53.0) % 1.0) - 0.5) * cellW) * 0.18;
-      const offsetY = ((((n * 67.0) % 1.0) - 0.5) * cellH) * 0.18;
-      const rotation = ((((n * 79.0) % 1.0) - 0.5) * 0.08);
+      const alpha = 0.78 + ((n * 7.0) % 1.0) * 0.22;
+      const size = 64 + ((n * 13.0) % 1.0) * 72;
+      const offsetX = ((((n * 53.0) % 1.0) - 0.5) * cellW) * 0.12;
+      const offsetY = ((((n * 67.0) % 1.0) - 0.5) * cellH) * 0.12;
+      const rotation = ((((n * 79.0) % 1.0) - 0.5) * 0.05);
 
       ctx.save();
       ctx.translate(x * cellW + cellW * 0.5 + offsetX, y * cellH + cellH * 0.5 + offsetY);
@@ -250,23 +256,23 @@ function createTextTexture() {
   }
 
   const heroFragments = [
-    { text: '0x0D', x: 0.15, y: 0.22, size: 58, alpha: 0.85 },
-    { text: '2WD', x: 0.78, y: 0.30, size: 64, alpha: 0.80 },
-    { text: '17 31', x: 0.55, y: 0.65, size: 54, alpha: 0.78 },
-    { text: '100 0100', x: 0.32, y: 0.80, size: 48, alpha: 0.72 },
-    { text: '2501', x: 0.72, y: 0.12, size: 50, alpha: 0.76 },
-    { text: 'A', x: 0.40, y: 0.18, size: 72, alpha: 0.70 },
-    { text: 'R', x: 0.86, y: 0.72, size: 68, alpha: 0.70 },
-    { text: 'const aura', x: 0.25, y: 0.48, size: 44, alpha: 0.74 },
-    { text: 'vec3(', x: 0.68, y: 0.52, size: 46, alpha: 0.68 },
-    { text: '<aura/>', x: 0.50, y: 0.38, size: 42, alpha: 0.66 },
-    { text: 'return;', x: 0.18, y: 0.62, size: 40, alpha: 0.64 },
-    { text: 'float t =', x: 0.82, y: 0.88, size: 38, alpha: 0.62 },
-    { text: '// projection', x: 0.42, y: 0.92, size: 36, alpha: 0.60 },
+    { text: '0x0D', x: 0.14, y: 0.24, size: 142, alpha: 1.0 },
+    { text: '2WD', x: 0.77, y: 0.28, size: 152, alpha: 1.0 },
+    { text: '17 31', x: 0.57, y: 0.67, size: 132, alpha: 0.96 },
+    { text: '100 0100', x: 0.28, y: 0.79, size: 114, alpha: 0.92 },
+    { text: '2501', x: 0.72, y: 0.13, size: 124, alpha: 0.96 },
+    { text: 'A', x: 0.39, y: 0.18, size: 184, alpha: 1.0 },
+    { text: 'R', x: 0.84, y: 0.73, size: 176, alpha: 1.0 },
+    { text: 'const aura', x: 0.23, y: 0.49, size: 104, alpha: 0.94 },
+    { text: 'vec3(', x: 0.69, y: 0.51, size: 112, alpha: 0.9 },
+    { text: '<aura/>', x: 0.49, y: 0.39, size: 108, alpha: 0.88 },
+    { text: 'return;', x: 0.16, y: 0.61, size: 104, alpha: 0.88 },
+    { text: 'float t =', x: 0.80, y: 0.88, size: 98, alpha: 0.86 },
+    { text: '// projection', x: 0.43, y: 0.92, size: 92, alpha: 0.84 },
   ];
 
   for (const hero of heroFragments) {
-    const rot = Math.sin(hero.x * 17.3 + hero.y * 31.7) * 0.07;
+    const rot = Math.sin(hero.x * 17.3 + hero.y * 31.7) * 0.04;
     ctx.save();
     ctx.translate(canvas.width * hero.x, canvas.height * hero.y);
     ctx.rotate(rot);
@@ -501,8 +507,8 @@ export default function Visualizer({ audio, onReactiveState }: VisualizerProps) 
 
   return (
     <Canvas camera={{ position: [0, 0, 5], fov: 38 }} dpr={[1, 1.8]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
-      <color attach="background" args={['#080509']} />
-      <fog attach="fog" args={['#080509', 5.5, 10.5]} />
+      <color attach="background" args={['#100a0e']} />
+      <fog attach="fog" args={['#100a0e', 5.5, 10.5]} />
       <Environment preset="night" />
       <ambientLight intensity={0.2} color="#2c1627" />
       <directionalLight position={[-2.5, 1.8, 2]} intensity={1.9} color="#ffe6dc" />
