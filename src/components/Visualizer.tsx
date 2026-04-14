@@ -109,14 +109,15 @@ float glyphShape(vec2 uv, float id) {
 }
 
 float ghostGlyphVeil(vec2 uv, vec2 flowUv, float shadowMask, float edgeMask, float t) {
-  vec2 gridUv = uv * vec2(15.0, 9.0) + flowUv * 0.55;
+  vec2 gridUv = uv * vec2(7.0, 4.2) + flowUv * 0.22;
   vec2 cell = floor(gridUv);
   vec2 local = fract(gridUv);
-  float seed = hash21(cell + floor(t * 0.08));
-  float presence = smoothstep(0.72, 0.95, seed);
-  float glyph = glyphShape(local, fract(seed * 7.31 + floor(t * 0.02) * 0.17));
-  float driftNoise = smoothstep(0.2, 0.78, snoise(cell * 0.37 + flowUv * 0.8 + t * 0.03));
-  return glyph * presence * driftNoise * shadowMask * (0.28 + edgeMask * 0.72);
+  float seed = hash21(cell + floor(t * 0.05));
+  float presence = smoothstep(0.46, 0.84, seed);
+  float glyph = glyphShape(local, fract(seed * 6.13 + floor(t * 0.014) * 0.11));
+  float driftNoise = smoothstep(0.05, 0.7, snoise(cell * 0.24 + flowUv * 0.45 + t * 0.018));
+  float reveal = smoothstep(-0.55, 0.75, sin((uv.x * 1.35 + uv.y * 0.9) * 3.2 + t * 0.06));
+  return glyph * presence * driftNoise * reveal * shadowMask * (0.62 + edgeMask * 0.95);
 }
 
 void main() {
@@ -179,15 +180,16 @@ void main() {
   float shimmer = ridgeMask * edgeNoise * (0.18 + uShimmer * 0.7 + uImpulse * 0.4);
   color += shimmer * vec3(1.0, 0.96, 0.88);
 
-  float acidMask = pow(ridgeMask, 1.45) * smoothstep(0.46, 1.0, creamPeaks + edgeNoise * 0.32);
-  vec3 gasoline = gasolinePalette(folds * 0.18 + q.x * 0.09 - q.y * 0.07 + t * 0.12);
-  vec3 gasolineTint = mix(vec3(0.64, 0.92, 0.82), gasoline, 0.72);
-  color += gasolineTint * acidMask * (0.1 + uFlow * 0.075 + uImpulse * 0.045);
+  float acidMask = pow(ridgeMask, 1.05) * smoothstep(0.34, 1.0, creamPeaks + edgeNoise * 0.5 + silk * 0.22);
+  vec3 gasoline = gasolinePalette(folds * 0.24 + q.x * 0.16 - q.y * 0.12 + t * 0.18);
+  vec3 gasolineTint = mix(vec3(0.78, 1.0, 0.88), gasoline, 0.9);
+  color += gasolineTint * acidMask * (0.24 + uFlow * 0.12 + uImpulse * 0.08);
+  color += gasolineTint * smoothstep(0.54, 0.96, ridgeMask + edgeNoise * 0.24 + silk * 0.08) * 0.08;
 
-  float shadowMask = smoothstep(0.56, 0.16, creamPeaks + mass4 * 0.14 + ridgeMask * 0.08);
+  float shadowMask = smoothstep(0.88, 0.26, creamPeaks + mass4 * 0.1 + ridgeMask * 0.14);
   float glyphField = ghostGlyphVeil(uv, cloth, shadowMask, ridgeMask, uTime);
-  vec3 glyphColor = mix(vec3(0.58, 0.8, 0.74), gasolineTint, 0.38);
-  color += glyphColor * glyphField * (0.058 + uShimmer * 0.024);
+  vec3 glyphColor = mix(vec3(0.84, 1.0, 0.92), gasolineTint, 0.62);
+  color += glyphColor * glyphField * (0.18 + uShimmer * 0.05);
 
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.03;
