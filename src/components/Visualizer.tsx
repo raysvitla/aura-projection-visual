@@ -74,6 +74,51 @@ vec3 gasolinePalette(float x) {
   return 0.5 + 0.5 * cos(6.28318 * (vec3(0.13, 0.37, 0.61) + x + vec3(0.0, 0.19, 0.43)));
 }
 
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 34.45);
+  return fract(p.x * p.y);
+}
+
+float segment(vec2 uv, vec2 a, vec2 b, float width) {
+  vec2 pa = uv - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return 1.0 - smoothstep(width, width + 0.012, length(pa - ba * h));
+}
+
+float glyphShape(vec2 uv, float id) {
+  float shape = 0.0;
+  if (id < 0.2) {
+    shape = max(segment(uv, vec2(0.22, 0.2), vec2(0.78, 0.2), 0.018), segment(uv, vec2(0.22, 0.8), vec2(0.78, 0.8), 0.018));
+    shape = max(shape, segment(uv, vec2(0.32, 0.28), vec2(0.68, 0.72), 0.014));
+  } else if (id < 0.4) {
+    shape = max(segment(uv, vec2(0.5, 0.18), vec2(0.5, 0.82), 0.018), segment(uv, vec2(0.2, 0.5), vec2(0.8, 0.5), 0.018));
+  } else if (id < 0.6) {
+    shape = max(segment(uv, vec2(0.28, 0.22), vec2(0.72, 0.78), 0.015), segment(uv, vec2(0.72, 0.22), vec2(0.28, 0.78), 0.015));
+  } else if (id < 0.8) {
+    shape = max(segment(uv, vec2(0.26, 0.2), vec2(0.26, 0.8), 0.016), segment(uv, vec2(0.74, 0.2), vec2(0.74, 0.8), 0.016));
+    shape = max(shape, segment(uv, vec2(0.26, 0.2), vec2(0.74, 0.2), 0.016));
+    shape = max(shape, segment(uv, vec2(0.26, 0.8), vec2(0.74, 0.8), 0.016));
+  } else {
+    shape = max(segment(uv, vec2(0.32, 0.2), vec2(0.68, 0.2), 0.016), segment(uv, vec2(0.32, 0.5), vec2(0.68, 0.5), 0.016));
+    shape = max(shape, segment(uv, vec2(0.32, 0.8), vec2(0.68, 0.8), 0.016));
+    shape = max(shape, segment(uv, vec2(0.32, 0.2), vec2(0.32, 0.8), 0.016));
+  }
+  return shape;
+}
+
+float ghostGlyphVeil(vec2 uv, vec2 flowUv, float shadowMask, float edgeMask, float t) {
+  vec2 gridUv = uv * vec2(15.0, 9.0) + flowUv * 0.55;
+  vec2 cell = floor(gridUv);
+  vec2 local = fract(gridUv);
+  float seed = hash21(cell + floor(t * 0.08));
+  float presence = smoothstep(0.72, 0.95, seed);
+  float glyph = glyphShape(local, fract(seed * 7.31 + floor(t * 0.02) * 0.17));
+  float driftNoise = smoothstep(0.2, 0.78, snoise(cell * 0.37 + flowUv * 0.8 + t * 0.03));
+  return glyph * presence * driftNoise * shadowMask * (0.28 + edgeMask * 0.72);
+}
+
 void main() {
   vec2 uv = vUv;
   vec2 p = uv * 2.0 - 1.0;
@@ -134,20 +179,26 @@ void main() {
   float shimmer = ridgeMask * edgeNoise * (0.18 + uShimmer * 0.7 + uImpulse * 0.4);
   color += shimmer * vec3(1.0, 0.96, 0.88);
 
-  float acidMask = pow(ridgeMask, 1.55) * smoothstep(0.5, 1.0, creamPeaks + edgeNoise * 0.28);
+  float acidMask = pow(ridgeMask, 1.45) * smoothstep(0.46, 1.0, creamPeaks + edgeNoise * 0.32);
   vec3 gasoline = gasolinePalette(folds * 0.18 + q.x * 0.09 - q.y * 0.07 + t * 0.12);
-  color += gasoline * acidMask * (0.09 + uFlow * 0.07 + uImpulse * 0.05);
+  vec3 gasolineTint = mix(vec3(0.64, 0.92, 0.82), gasoline, 0.72);
+  color += gasolineTint * acidMask * (0.1 + uFlow * 0.075 + uImpulse * 0.045);
+
+  float shadowMask = smoothstep(0.56, 0.16, creamPeaks + mass4 * 0.14 + ridgeMask * 0.08);
+  float glyphField = ghostGlyphVeil(uv, cloth, shadowMask, ridgeMask, uTime);
+  vec3 glyphColor = mix(vec3(0.58, 0.8, 0.74), gasolineTint, 0.38);
+  color += glyphColor * glyphField * (0.058 + uShimmer * 0.024);
 
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.03;
 
   float centerGlow = smoothstep(1.22, 0.18, length((uv - 0.5) * vec2(1.1, 0.92)));
-  color += vec3(0.035, 0.012, 0.026) * centerGlow;
+  color += vec3(0.026, 0.008, 0.02) * centerGlow;
 
   color = max(color - vec3(0.012), 0.0);
   color = pow(color, vec3(0.98));
   color = color * 1.03 + creamPeaks * 0.06;
-  color = smoothstep(vec3(0.015), vec3(1.0), color);
+  color = smoothstep(vec3(0.022), vec3(1.0), color);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -321,7 +372,7 @@ function Logo({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveState> })
     const shapedY = Math.sign(rawDriftY) * Math.pow(Math.abs(rawDriftY), 0.6);
     const breath = Math.sin(state.clock.elapsedTime * 0.009 + 0.7);
 
-    groupRef.current.rotation.y = state.clock.elapsedTime * 0.012 + reactive.flow * 0.045;
+    groupRef.current.rotation.y = state.clock.elapsedTime * 0.018 + reactive.flow * 0.055;
     groupRef.current.rotation.x = 0.08 + Math.sin(state.clock.elapsedTime * 0.028) * 0.045 + reactive.bass * 0.025;
     groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.018) * 0.024;
     groupRef.current.position.x = shapedX * 0.92 + Math.sin(state.clock.elapsedTime * 0.12) * 0.025;
