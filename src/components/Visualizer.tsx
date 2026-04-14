@@ -85,31 +85,29 @@ vec3 sampleEmbeddedGlyphs(vec2 uv, vec2 cloth, float folds, float ridgeMask, flo
   vec2 textUv = uv;
   textUv.x *= uResolution.x / uResolution.y;
   textUv *= vec2(0.84, 0.82);
-  textUv += cloth * 0.075;
+  textUv += cloth * 0.055;
   textUv += vec2(t * 0.008, -t * 0.014);
   textUv += vec2(
     snoise(cloth * 2.0 + vec2(t * 0.12, -t * 0.08)),
     snoise(cloth * 2.2 + vec2(-t * 0.09, t * 0.11))
-  ) * 0.016;
+  ) * 0.011;
 
-  float ca = 0.0025 + uShimmer * 0.002;
+  float ca = 0.004 + uShimmer * 0.003;
   vec2 textUv2 = textUv * vec2(1.37, 1.21) + vec2(0.18, -0.11);
-  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.6, 0.0)).r * 0.72);
-  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.72);
-  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.6, 0.0)).r * 0.72);
+  float textR = max(texture2D(uTextTex, textUv + vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 + vec2(ca * 0.6, 0.0)).r * 0.55);
+  float textG = max(texture2D(uTextTex, textUv).r, texture2D(uTextTex, textUv2).r * 0.55);
+  float textB = max(texture2D(uTextTex, textUv - vec2(ca, 0.0)).r, texture2D(uTextTex, textUv2 - vec2(ca * 0.6, 0.0)).r * 0.55);
   vec3 glyph = vec3(textR, textG, textB);
 
   float textLum = dot(glyph, vec3(0.3333));
-  float midMask = smoothstep(0.1, 0.7, folds + silk * 0.22) * (1.0 - smoothstep(0.78, 1.05, creamPeaks + silk * 0.22));
-  float shadowMask = smoothstep(0.98, 0.2, creamPeaks + ridgeMask * 0.14);
-  float edgeMask = smoothstep(0.16, 0.88, ridgeMask + silk * 0.22 + uFlow * 0.12);
-  float dissolve = smoothstep(0.24, 0.82, snoise(cloth * 4.1 + vec2(t * 0.18, -t * 0.12)) * 0.5 + 0.5);
-  float emergence = smoothstep(0.04, 0.5, textLum);
-  float visibility = emergence * midMask * shadowMask * edgeMask * dissolve;
-  visibility = pow(visibility, 0.78);
+  float emergence = smoothstep(0.05, 0.35, textLum);
+  float midTone = smoothstep(0.12, 0.55, folds + silk * 0.15) * (1.0 - smoothstep(0.85, 1.15, creamPeaks));
+  float dissolve = smoothstep(0.2, 0.75, snoise(cloth * 3.0 + vec2(t * 0.14, -t * 0.1)) * 0.5 + 0.5);
+  float visibility = emergence * midTone * dissolve;
+  visibility = pow(visibility, 0.55);
 
-  vec3 paleInk = mix(vec3(0.82, 0.99, 0.9), gasolineTint, 0.58);
-  return paleInk * glyph * visibility * (0.62 + uShimmer * 0.18 + uImpulse * 0.12);
+  vec3 paleInk = mix(vec3(0.86, 1.0, 0.93), gasolineTint, 0.42);
+  return paleInk * glyph * visibility * (0.88 + uShimmer * 0.2 + uImpulse * 0.15);
 }
 
 void main() {
@@ -180,16 +178,20 @@ void main() {
 
   color += sampleEmbeddedGlyphs(uv, cloth, folds, ridgeMask, silk, creamPeaks, gasolineTint, uTime);
 
+  float ambientFabric = fbm(cloth * 0.4 + vec2(t * 0.02)) * 0.5 + 0.5;
+  vec3 ambientFloor = mix(vec3(0.032, 0.016, 0.038), vec3(0.038, 0.025, 0.042), ambientFabric);
+  color = max(color, ambientFloor);
+
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
-  color -= grain * 0.03;
+  color -= grain * 0.025;
 
   float centerGlow = smoothstep(1.22, 0.18, length((uv - 0.5) * vec2(1.1, 0.92)));
   color += vec3(0.026, 0.008, 0.02) * centerGlow;
 
-  color = max(color - vec3(0.012), 0.0);
+  color = max(color - vec3(0.008), 0.0);
   color = pow(color, vec3(0.98));
   color = color * 1.03 + creamPeaks * 0.06;
-  color = smoothstep(vec3(0.022), vec3(1.0), color);
+  color = smoothstep(vec3(0.012), vec3(1.0), color);
 
   gl_FragColor = vec4(color, 1.0);
 }
@@ -217,9 +219,9 @@ function createTextTexture() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const fragments = ['0x0D', '2WD', '17 31', '100 0100', '2501', 'A', 'R', '::', '//', '[ ]', '01', '+', '<>', '{}'];
-  const cols = 28;
-  const rows = 34;
+  const fragments = ['0x0D', '2WD', '17 31', '2501', 'A', 'R', '::', '//', '[ ]', '01', '+', '<>', '{}', 'vec3', 'float', 'return'];
+  const cols = 16;
+  const rows = 20;
   const cellW = canvas.width / cols;
   const cellH = canvas.height / rows;
 
@@ -227,49 +229,50 @@ function createTextTexture() {
     for (let x = 0; x < cols; x += 1) {
       const seed = Math.sin(x * 93.17 + y * 17.31) * 43758.5453;
       const n = seed - Math.floor(seed);
-      if (n < 0.68) continue;
+      if (n < 0.72) continue;
 
       const fragment = fragments[Math.floor(n * fragments.length) % fragments.length];
-      const alpha = 0.16 + ((n * 7.0) % 1.0) * 0.34;
-      const size = 14 + ((n * 13.0) % 1.0) * 12;
-      const hue = 108 + ((n * 23.0) % 1.0) * 44;
-      const sat = 18 + ((n * 31.0) % 1.0) * 24;
-      const light = 72 + ((n * 41.0) % 1.0) * 14;
-      const offsetX = ((((n * 53.0) % 1.0) - 0.5) * cellW) * 0.22;
-      const offsetY = ((((n * 67.0) % 1.0) - 0.5) * cellH) * 0.22;
-      const rotation = ((((n * 79.0) % 1.0) - 0.5) * 0.1);
+      const alpha = 0.5 + ((n * 7.0) % 1.0) * 0.5;
+      const size = 22 + ((n * 13.0) % 1.0) * 20;
+      const offsetX = ((((n * 53.0) % 1.0) - 0.5) * cellW) * 0.18;
+      const offsetY = ((((n * 67.0) % 1.0) - 0.5) * cellH) * 0.18;
+      const rotation = ((((n * 79.0) % 1.0) - 0.5) * 0.08);
 
       ctx.save();
       ctx.translate(x * cellW + cellW * 0.5 + offsetX, y * cellH + cellH * 0.5 + offsetY);
       ctx.rotate(rotation);
       ctx.font = `600 ${size}px monospace`;
-      ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = `hsla(${hue + 30}, ${sat + 10}%, 86%, ${alpha * 0.35})`;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#fff';
       ctx.fillText(fragment, 0, 0);
       ctx.restore();
     }
   }
 
   const heroFragments = [
-    { text: '0x0D', x: 0.18, y: 0.24, size: 44, alpha: 0.5, rot: -0.12 },
-    { text: '2WD', x: 0.76, y: 0.33, size: 52, alpha: 0.52, rot: 0.08 },
-    { text: '17 31', x: 0.58, y: 0.68, size: 42, alpha: 0.46, rot: -0.06 },
-    { text: '100 0100', x: 0.34, y: 0.78, size: 38, alpha: 0.4, rot: 0.05 },
-    { text: '2501', x: 0.7, y: 0.14, size: 34, alpha: 0.38, rot: 0.02 },
-    { text: 'A', x: 0.42, y: 0.2, size: 58, alpha: 0.34, rot: -0.09 },
-    { text: 'R', x: 0.84, y: 0.74, size: 56, alpha: 0.34, rot: 0.11 },
+    { text: '0x0D', x: 0.15, y: 0.22, size: 58, alpha: 0.85 },
+    { text: '2WD', x: 0.78, y: 0.30, size: 64, alpha: 0.80 },
+    { text: '17 31', x: 0.55, y: 0.65, size: 54, alpha: 0.78 },
+    { text: '100 0100', x: 0.32, y: 0.80, size: 48, alpha: 0.72 },
+    { text: '2501', x: 0.72, y: 0.12, size: 50, alpha: 0.76 },
+    { text: 'A', x: 0.40, y: 0.18, size: 72, alpha: 0.70 },
+    { text: 'R', x: 0.86, y: 0.72, size: 68, alpha: 0.70 },
+    { text: 'const aura', x: 0.25, y: 0.48, size: 44, alpha: 0.74 },
+    { text: 'vec3(', x: 0.68, y: 0.52, size: 46, alpha: 0.68 },
+    { text: '<aura/>', x: 0.50, y: 0.38, size: 42, alpha: 0.66 },
+    { text: 'return;', x: 0.18, y: 0.62, size: 40, alpha: 0.64 },
+    { text: 'float t =', x: 0.82, y: 0.88, size: 38, alpha: 0.62 },
+    { text: '// projection', x: 0.42, y: 0.92, size: 36, alpha: 0.60 },
   ];
 
   for (const hero of heroFragments) {
-    const hue = hero.text === 'A' || hero.text === 'R' ? 118 : 132;
+    const rot = Math.sin(hero.x * 17.3 + hero.y * 31.7) * 0.07;
     ctx.save();
     ctx.translate(canvas.width * hero.x, canvas.height * hero.y);
-    ctx.rotate(hero.rot);
+    ctx.rotate(rot);
     ctx.font = `700 ${hero.size}px monospace`;
-    ctx.fillStyle = `hsla(${hue}, 28%, 84%, ${hero.alpha})`;
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = `hsla(${hue + 24}, 44%, 90%, ${hero.alpha * 0.46})`;
+    ctx.globalAlpha = hero.alpha;
+    ctx.fillStyle = '#fff';
     ctx.fillText(hero.text, 0, 0);
     ctx.restore();
   }
