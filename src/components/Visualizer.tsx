@@ -121,8 +121,10 @@ void main() {
   vec2 p = uv * 2.0 - 1.0;
   p.x *= uResolution.x / uResolution.y;
 
-  float t = uTime * (0.045 + uFlow * 0.03);
-  float longT = uTime * 0.013;
+  float stableTime = mod(uTime, 900.0);
+  float stableLongTime = mod(uTime, 3600.0);
+  float t = stableTime * (0.045 + uFlow * 0.03);
+  float longT = stableLongTime * 0.013;
   vec2 drift = vec2(sin(longT * 1.2), cos(longT * 0.87)) * 0.42;
 
   vec2 q = p;
@@ -157,7 +159,7 @@ void main() {
   float mass3 = smoothstep(1.4, 0.22, length(mass3P * vec2(0.92, 0.88)) + fbm(cloth * 1.3 - 2.1) * 0.3);
   float mass4 = smoothstep(1.36, 0.18, length(mass4P * vec2(1.08, 0.8)) + fbm(cloth * 0.78 + 9.2) * 0.31);
 
-  vec3 color = vec3(0.03, 0.015, 0.035);
+  vec3 color = vec3(0.06, 0.028, 0.06);
   vec3 mass1Color = mix(vec3(0.15, 0.03, 0.18), vec3(0.23, 0.03, 0.06), uColorWarmth);
   vec3 mass2Color = mix(vec3(0.22, 0.12, 0.38), vec3(0.42, 0.16, 0.32), uColorWarmth);
   vec3 mass3Color = mix(vec3(0.56, 0.28, 0.62), vec3(0.78, 0.36, 0.48), uColorWarmth);
@@ -172,19 +174,19 @@ void main() {
   color = mix(color, vec3(0.66, 0.31, 0.46), silk * 0.22);
   color = mix(color, vec3(0.98, 0.93, 0.82), creamPeaks * 0.44);
 
-  float edgeNoise = smoothstep(0.48, 0.94, snoise(cloth * 2.3 + uTime * 0.25));
+  float edgeNoise = smoothstep(0.48, 0.94, snoise(cloth * 2.3 + stableTime * 0.25));
   float shimmer = ridgeMask * edgeNoise * (0.18 + uShimmer * 0.7 + uImpulse * 0.4);
   color += shimmer * vec3(1.0, 0.96, 0.88);
 
   float acidMask = pow(ridgeMask, 1.05) * smoothstep(0.34, 1.0, creamPeaks + edgeNoise * 0.5 + silk * 0.22);
   vec3 gasoline = gasolinePalette(folds * 0.24 + q.x * 0.16 - q.y * 0.12 + t * 0.18);
   vec3 gasolineTint = mix(vec3(0.78, 1.0, 0.88), gasoline, 0.9);
-  color += gasolineTint * acidMask * (0.28 + uFlow * 0.14 + uImpulse * 0.1);
-  color += gasolineTint * smoothstep(0.54, 0.96, ridgeMask + edgeNoise * 0.24 + silk * 0.08) * 0.1;
+  color += gasolineTint * acidMask * (0.24 + uFlow * 0.1 + uImpulse * 0.08);
+  color += gasolineTint * smoothstep(0.54, 0.96, ridgeMask + edgeNoise * 0.24 + silk * 0.08) * 0.08;
 
-  color += sampleEmbeddedGlyphs(uv, cloth, folds, ridgeMask, silk, creamPeaks, gasolineTint, uTime);
+  color += sampleEmbeddedGlyphs(uv, cloth, folds, ridgeMask, silk, creamPeaks, gasolineTint, stableTime);
 
-  float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
+  float grain = fract(sin(dot(uv + vec2(stableTime * 0.0017, -stableTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.03;
 
   float centerGlow = smoothstep(1.22, 0.18, length((uv - 0.5) * vec2(1.1, 0.92)));
@@ -261,8 +263,10 @@ void main() {
   vec2 p = uv * 2.0 - 1.0;
   p.x *= uResolution.x / uResolution.y;
 
-  float t = uTime * 0.042;
-  float slowT = uTime * 0.014;
+  float stableTime = mod(uTime, 900.0);
+  float stableSlowTime = mod(uTime, 3600.0);
+  float t = stableTime * 0.042;
+  float slowT = stableSlowTime * 0.014;
 
   vec2 center = vec2(sin(slowT * 0.7) * 0.035, cos(slowT * 0.5) * 0.025);
   vec2 pc = p - center;
@@ -361,7 +365,7 @@ void main() {
   float vignette = smoothstep(1.9, 0.4, r);
   color *= 0.25 + vignette * 0.75;
 
-  float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
+  float grain = fract(sin(dot(uv + vec2(stableTime * 0.0017, -stableTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.02;
 
   color = max(color, 0.0);
@@ -535,8 +539,10 @@ function LegacyBackgroundPlane({
 }: { audio: AudioEngine; onReactiveState: (state: ReactiveState) => void; reactiveRef: MutableRefObject<ReactiveState>; blendRef: MutableRefObject<number> }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const lastUiSyncRef = useRef(0);
-  const { viewport, size } = useThree();
+  const { viewport, camera, size } = useThree();
   const textTexture = useMemo(() => createTextTexture(), []);
+  const planeTarget = useMemo(() => new THREE.Vector3(0, 0, -2.15), []);
+  const planeVp = viewport.getCurrentViewport(camera, planeTarget);
 
   const uniforms = useMemo(
     () => ({
@@ -600,7 +606,7 @@ function LegacyBackgroundPlane({
 
   return (
     <mesh position={[0, 0, -2.15]}>
-      <planeGeometry args={[viewport.width, viewport.height]} />
+      <planeGeometry args={[planeVp.width, planeVp.height]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={screenVertexShader}
@@ -615,7 +621,9 @@ function LegacyBackgroundPlane({
 
 function RoseBackgroundPlane({ reactiveRef, blendRef }: { reactiveRef: MutableRefObject<ReactiveState>; blendRef: MutableRefObject<number> }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-  const { viewport, size } = useThree();
+  const { viewport, camera, size } = useThree();
+  const planeTarget = useMemo(() => new THREE.Vector3(0, 0, -2), []);
+  const planeVp = viewport.getCurrentViewport(camera, planeTarget);
 
   const uniforms = useMemo(
     () => ({
@@ -649,7 +657,7 @@ function RoseBackgroundPlane({ reactiveRef, blendRef }: { reactiveRef: MutableRe
 
   return (
     <mesh position={[0, 0, -2]}>
-      <planeGeometry args={[viewport.width, viewport.height]} />
+      <planeGeometry args={[planeVp.width, planeVp.height]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={screenVertexShader}
