@@ -1,4 +1,6 @@
 import { Maximize2, Mic, MicOff, Radio, Sparkles } from 'lucide-react';
+
+type BackgroundMode = 'auto' | 'legacy' | 'rose';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Visualizer from './components/Visualizer';
@@ -19,6 +21,7 @@ export default function App() {
   const [reactive, setReactive] = useState<ReactiveState>(initialReactiveState);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [uiVisible, setUiVisible] = useState(true);
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('auto');
   const [status, setStatus] = useState('Autopilot running. Mic adds soft movement; keys add little nudges.');
   const idleTimer = useRef<number | null>(null);
 
@@ -33,6 +36,28 @@ export default function App() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) return;
+
+      if (event.key === '1') {
+        setBackgroundMode('auto');
+        setStatus('Background mode: auto. Switching between worlds every ~7 minutes.');
+        showUi();
+        return;
+      }
+
+      if (event.key === '2') {
+        setBackgroundMode('legacy');
+        setStatus('Background mode: legacy. Locked to the dfd4f94 world.');
+        showUi();
+        return;
+      }
+
+      if (event.key === '3') {
+        setBackgroundMode('rose');
+        setStatus('Background mode: rose. Locked to the current live background.');
+        showUi();
+        return;
+      }
+
       audio.triggerImpulse(0.28);
       showUi();
     };
@@ -80,9 +105,16 @@ export default function App() {
     await document.exitFullscreen();
   };
 
+  const setMode = (mode: BackgroundMode) => {
+    setBackgroundMode(mode);
+    if (mode === 'auto') setStatus('Background mode: auto. Switching between worlds every ~7 minutes.');
+    if (mode === 'legacy') setStatus('Background mode: legacy. Locked to the dfd4f94 world.');
+    if (mode === 'rose') setStatus('Background mode: rose. Locked to the current live background.');
+  };
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: '#080509' }}>
-      <Visualizer audio={audio} onReactiveState={setReactive} />
+      <Visualizer audio={audio} onReactiveState={setReactive} backgroundMode={backgroundMode} />
 
       <div
         style={{
@@ -115,6 +147,7 @@ export default function App() {
           <div style={{ fontSize: 12, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,243,238,0.6)' }}>AURA</div>
           <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Spectral bloom. Dark, slow, projector-safe.</div>
           <div style={{ fontSize: 12, color: 'rgba(255,243,238,0.48)', lineHeight: 1.5 }}>{status}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,243,238,0.42)' }}>1 auto · 2 legacy · 3 rose</div>
         </div>
 
         <div
@@ -123,16 +156,25 @@ export default function App() {
             top: 24,
             right: 24,
             display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
             gap: 12,
             pointerEvents: 'auto',
           }}
         >
-          <ControlButton onClick={toggleMic} title={reactive.mode === 'mic' ? 'Disable microphone' : 'Enable microphone'}>
-            {reactive.mode === 'mic' ? <Mic size={18} /> : <MicOff size={18} />}
-          </ControlButton>
-          <ControlButton onClick={toggleFullscreen} title="Toggle fullscreen">
-            <Maximize2 size={18} />
-          </ControlButton>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <ModeButton active={backgroundMode === 'auto'} onClick={() => setMode('auto')} label="auto" />
+            <ModeButton active={backgroundMode === 'legacy'} onClick={() => setMode('legacy')} label="legacy" />
+            <ModeButton active={backgroundMode === 'rose'} onClick={() => setMode('rose')} label="rose" />
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <ControlButton onClick={toggleMic} title={reactive.mode === 'mic' ? 'Disable microphone' : 'Enable microphone'}>
+              {reactive.mode === 'mic' ? <Mic size={18} /> : <MicOff size={18} />}
+            </ControlButton>
+            <ControlButton onClick={toggleFullscreen} title="Toggle fullscreen">
+              <Maximize2 size={18} />
+            </ControlButton>
+          </div>
         </div>
 
         <div
@@ -195,6 +237,29 @@ function ControlButton({ children, title, onClick }: ControlButtonProps) {
       }}
     >
       {children}
+    </button>
+  );
+}
+
+function ModeButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '8px 12px',
+        borderRadius: 999,
+        border: `1px solid ${active ? 'rgba(255,212,228,0.34)' : 'rgba(255,255,255,0.12)'}`,
+        background: active ? 'rgba(255,169,204,0.16)' : 'rgba(14,10,16,0.4)',
+        color: 'rgba(255,243,238,0.88)',
+        fontSize: 11,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        backdropFilter: 'blur(16px)',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
     </button>
   );
 }

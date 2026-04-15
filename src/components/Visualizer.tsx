@@ -6,7 +6,9 @@ import * as THREE from 'three';
 import { AudioEngine, ReactiveState } from '../lib/AudioEngine';
 
 const LOGO_SRC = `${import.meta.env.BASE_URL}logo.glb`;
-const BACKGROUND_BLEND_SECONDS = 60 * 60 * 2;
+const BACKGROUND_BLEND_SECONDS = 60 * 7;
+
+type BackgroundMode = 'auto' | 'legacy' | 'rose';
 
 const screenVertexShader = /* glsl */ `
 varying vec2 vUv;
@@ -373,6 +375,7 @@ void main() {
 type VisualizerProps = {
   audio: AudioEngine;
   onReactiveState: (state: ReactiveState) => void;
+  backgroundMode: BackgroundMode;
 };
 
 type QualityProfile = {
@@ -529,7 +532,7 @@ function LegacyBackgroundPlane({
   onReactiveState,
   reactiveRef,
   blendRef,
-}: VisualizerProps & { reactiveRef: MutableRefObject<ReactiveState>; blendRef: MutableRefObject<number> }) {
+}: { audio: AudioEngine; onReactiveState: (state: ReactiveState) => void; reactiveRef: MutableRefObject<ReactiveState>; blendRef: MutableRefObject<number> }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const lastUiSyncRef = useRef(0);
   const { viewport, size } = useThree();
@@ -965,7 +968,7 @@ function Logo({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveState> })
 
 useGLTF.preload(LOGO_SRC);
 
-export default function Visualizer({ audio, onReactiveState }: VisualizerProps) {
+export default function Visualizer({ audio, onReactiveState, backgroundMode }: VisualizerProps) {
   const reactiveRef = useRef<ReactiveState>({
     bass: 0.2,
     flow: 0.22,
@@ -980,7 +983,7 @@ export default function Visualizer({ audio, onReactiveState }: VisualizerProps) 
 
   return (
     <Canvas camera={{ position: [0, 0, 5], fov: 38 }} dpr={quality.dpr} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
-      <BlendClock blendRef={blendRef} />
+      <BlendClock blendRef={blendRef} backgroundMode={backgroundMode} />
       <color attach="background" args={['#080509']} />
       <fog attach="fog" args={['#080509', 5.5, 10.5]} />
       <Environment preset="night" />
@@ -999,8 +1002,18 @@ export default function Visualizer({ audio, onReactiveState }: VisualizerProps) 
   );
 }
 
-function BlendClock({ blendRef }: { blendRef: MutableRefObject<number> }) {
+function BlendClock({ blendRef, backgroundMode }: { blendRef: MutableRefObject<number>; backgroundMode: BackgroundMode }) {
   useFrame((state) => {
+    if (backgroundMode === 'legacy') {
+      blendRef.current = 0;
+      return;
+    }
+
+    if (backgroundMode === 'rose') {
+      blendRef.current = 1;
+      return;
+    }
+
     blendRef.current = smoothPingPong(state.clock.elapsedTime);
   });
   return null;
