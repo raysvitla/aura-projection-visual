@@ -81,7 +81,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: '#090509' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: '#080509' }}>
       <Visualizer audio={audio} onReactiveState={setReactive} />
 
       <div
@@ -113,7 +113,7 @@ export default function App() {
           }}
         >
           <div style={{ fontSize: 12, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,243,238,0.6)' }}>AURA</div>
-          <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Dark, slow, projector-safe. A little toxic, in a good way.</div>
+          <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Spectral bloom. Dark, slow, projector-safe.</div>
           <div style={{ fontSize: 12, color: 'rgba(255,243,238,0.48)', lineHeight: 1.5 }}>{status}</div>
         </div>
 
