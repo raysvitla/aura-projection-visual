@@ -70,32 +70,6 @@ float hash21(vec2 p) {
   return fract(p.x * p.y);
 }
 
-float bayer4(vec2 fragCoord) {
-  vec2 p = mod(floor(fragCoord), 4.0);
-  if (p.x < 0.5) {
-    if (p.y < 0.5) return 0.0 / 16.0;
-    if (p.y < 1.5) return 12.0 / 16.0;
-    if (p.y < 2.5) return 3.0 / 16.0;
-    return 15.0 / 16.0;
-  }
-  if (p.x < 1.5) {
-    if (p.y < 0.5) return 8.0 / 16.0;
-    if (p.y < 1.5) return 4.0 / 16.0;
-    if (p.y < 2.5) return 11.0 / 16.0;
-    return 7.0 / 16.0;
-  }
-  if (p.x < 2.5) {
-    if (p.y < 0.5) return 2.0 / 16.0;
-    if (p.y < 1.5) return 14.0 / 16.0;
-    if (p.y < 2.5) return 1.0 / 16.0;
-    return 13.0 / 16.0;
-  }
-  if (p.y < 0.5) return 10.0 / 16.0;
-  if (p.y < 1.5) return 6.0 / 16.0;
-  if (p.y < 2.5) return 9.0 / 16.0;
-  return 5.0 / 16.0;
-}
-
 void main() {
   vec2 uv = vUv;
   vec2 p = uv * 2.0 - 1.0;
@@ -204,16 +178,6 @@ void main() {
 
   float grain = fract(sin(dot(uv + vec2(uTime * 0.0017, -uTime * 0.0011), vec2(12.9898, 78.233))) * 43758.5453);
   color -= grain * 0.02;
-
-  float dither = bayer4(gl_FragCoord.xy + vec2(uTime * 6.0, 0.0));
-  float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  float sandField = clamp(midBloom * 0.75 + outerBloom * 0.4 + silk * 0.25 + stippleDots * 0.9 + dustDots * 0.55 - coreBloom * 0.18, 0.0, 1.0);
-  float coverage = smoothstep(dither - 0.08, dither + 0.18, sandField * 0.9 + luma * 0.45);
-  float quantizedLuma = floor(luma * 7.0 + dither * 1.5) / 7.0;
-  vec3 ditherTint = mix(vec3(quantizedLuma), color, 0.7);
-  color = mix(color, ditherTint, sandField * 0.22);
-  color *= mix(0.88, 1.06, coverage);
-  color += cream * (coverage - 0.5) * sandField * 0.045;
 
   color = max(color, 0.0);
   color = pow(color, vec3(0.97));
@@ -486,13 +450,12 @@ function RoseCloud({ reactiveRef, quality }: { reactiveRef: MutableRefObject<Rea
   const material = useMemo(() => {
     const mat = new THREE.PointsMaterial({
       size: quality.roseSize,
-      transparent: false,
-      opacity: 0.82,
-      blending: THREE.NormalBlending,
+      transparent: true,
+      opacity: 0.92,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
       vertexColors: true,
-      alphaHash: true,
     });
     mat.toneMapped = false;
     return mat;
@@ -507,8 +470,8 @@ function RoseCloud({ reactiveRef, quality }: { reactiveRef: MutableRefObject<Rea
     pointsRef.current.position.x = Math.sin(state.clock.elapsedTime * 0.06) * 0.024;
     pointsRef.current.position.y = 0.04 + Math.cos(state.clock.elapsedTime * 0.05) * 0.02;
     pointsRef.current.scale.set(1.32 * breath, 1.46 * breath, 1.24 * breath);
-    material.opacity = 0.78 + reactive.shimmer * 0.08 + reactive.impulse * 0.04;
-    material.size = quality.roseSize + reactive.shimmer * 0.0017 + reactive.impulse * 0.001;
+    material.opacity = 0.88 + reactive.shimmer * 0.1 + reactive.impulse * 0.05;
+    material.size = quality.roseSize + reactive.shimmer * 0.002 + reactive.impulse * 0.0012;
   });
 
   return <points ref={pointsRef} args={[geometry, material]} position={[0, 0.04, 0.22]} />;
