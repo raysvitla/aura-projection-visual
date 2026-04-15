@@ -127,15 +127,15 @@ void main() {
   float silk = fbm(warped * 2.0 + warp1 * 0.8 + vec2(t * 0.06, -t * 0.04));
   silk = smoothstep(-0.3, 0.8, silk) * midBloom;
 
-  vec2 stippleUV = pc * 32.0 + warp1 * 2.5 + vec2(t * 0.4, -t * 0.25);
+  vec2 stippleUV = pc * 58.0 + warp1 * 3.5 + vec2(t * 0.4, -t * 0.25);
   float stipple = hash21(floor(stippleUV));
-  float stippleThresh = 0.89 - uShimmer * 0.05 - uImpulse * 0.03;
-  float stippleDots = smoothstep(stippleThresh, stippleThresh + 0.015, stipple);
-  stippleDots *= smoothstep(2.0, 0.25, r) * smoothstep(0.0, 0.12, r);
+  float stippleThresh = 0.84 - uShimmer * 0.05 - uImpulse * 0.03;
+  float stippleDots = smoothstep(stippleThresh, stippleThresh + 0.03, stipple);
+  stippleDots *= smoothstep(2.2, 0.22, r) * smoothstep(0.0, 0.1, r);
 
-  vec2 dustUV = pc * 14.0 + warp2 * 1.2 + vec2(-t * 0.15, t * 0.12);
+  vec2 dustUV = pc * 28.0 + warp2 * 1.8 + vec2(-t * 0.15, t * 0.12);
   float dust = hash21(floor(dustUV));
-  float dustDots = smoothstep(0.93, 0.95, dust) * smoothstep(2.3, 0.4, r);
+  float dustDots = smoothstep(0.86, 0.94, dust) * smoothstep(2.5, 0.35, r);
 
   float apparition = exp(-warpedR * warpedR * 2.2);
   float coreShift = fbm(pc * 2.2 + vec2(t * 0.12, -t * 0.08));
@@ -245,14 +245,14 @@ function DustParticles({ reactiveRef }: { reactiveRef: MutableRefObject<Reactive
   const pointsRef = useRef<THREE.Points>(null);
 
   const geometry = useMemo(() => {
-    const count = 800;
+    const count = 2400;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = Math.pow(Math.random(), 1.2) * 2.3;
+      const radius = Math.pow(Math.random(), 1.45) * 2.9;
       positions[i * 3] = Math.cos(angle) * radius;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 2.8;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 1.8;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 3.3;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 2.4;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -262,9 +262,9 @@ function DustParticles({ reactiveRef }: { reactiveRef: MutableRefObject<Reactive
   const material = useMemo(() => {
     const mat = new THREE.PointsMaterial({
       color: new THREE.Color('#ddb8c8'),
-      size: 0.02,
+      size: 0.012,
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.1,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
@@ -341,29 +341,41 @@ function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
   const pointsRef = useRef<THREE.Points>(null);
 
   const geometry = useMemo(() => {
-    const count = 4800;
+    const count = 42000;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
-    const c1 = new THREE.Color('#f6e4da');
-    const c2 = new THREE.Color('#dba3b8');
-    const c3 = new THREE.Color('#8c3d62');
+    const c1 = new THREE.Color('#fff0e4');
+    const c2 = new THREE.Color('#f2c8d1');
+    const c3 = new THREE.Color('#d889a8');
+    const c4 = new THREE.Color('#7f3058');
 
     for (let i = 0; i < count; i += 1) {
       const a = Math.random() * Math.PI * 2.0;
-      const band = Math.random();
-      const rose = 0.3 + Math.pow(Math.abs(Math.sin(a * 2.5)), 0.9) * 0.95;
-      const radius = Math.pow(Math.random(), 0.72) * rose * (1.18 - band * 0.18);
-      const swirl = (Math.random() - 0.5) * 0.12;
-      const x = Math.cos(a + swirl) * radius * 0.95;
-      const y = Math.sin(a) * radius * 1.18 - radius * 0.08 + (Math.random() - 0.5) * 0.08;
-      const z = (Math.random() - 0.5) * 0.42 + (1.0 - radius) * 0.22;
+      const petalBand = Math.floor(Math.random() * 7.0);
+      const shellType = Math.random();
+      const petalCurve = 0.5 + Math.pow(Math.abs(Math.sin(a * 2.5 + petalBand * 0.52)), 0.78) * 1.38;
+      const innerBias = Math.pow(Math.random(), petalBand < 2 ? 0.4 : 0.68);
+      const outerBias = 0.58 + Math.pow(Math.random(), 1.8) * 0.92;
+      const shellBias = shellType < 0.44 ? outerBias : innerBias;
+      const radius = shellBias * petalCurve * (1.68 - petalBand * 0.07);
+      const swirl = a * 0.2 + petalBand * 0.34 + (Math.random() - 0.5) * 0.2;
+      const twist = Math.sin(a * 3.0 + petalBand * 0.92) * 0.14;
+      const lateralSpread = 1.0 + petalBand * 0.032 + (shellType < 0.44 ? 0.1 : 0.0);
+      const verticalSpread = 1.18 + petalBand * 0.035;
+      const x = Math.cos(a + swirl) * radius * lateralSpread + Math.cos(swirl * 2.0) * 0.09;
+      const y = Math.sin(a + twist) * radius * verticalSpread - radius * 0.1 + (Math.random() - 0.5) * 0.12;
+      const z = (Math.random() - 0.5) * 0.88 + (1.35 - radius) * 0.3 + petalBand * 0.02;
 
       positions[i * 3] = x;
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
 
-      const mixColor = c1.clone().lerp(c2, Math.min(1, radius * 0.85 + band * 0.2)).lerp(c3, Math.max(0, radius - 0.78) * 2.0);
+      const edgeMix = Math.min(1, radius * 0.32 + petalBand * 0.11);
+      const depthMix = Math.max(0, (radius - 1.0) * 0.72 + petalBand * 0.05);
+      const shadowMix = Math.max(0, radius - 1.78) * 0.55;
+      const shimmerMix = Math.random() * 0.12;
+      const mixColor = c1.clone().lerp(c2, edgeMix).lerp(c3, depthMix).lerp(c4, shadowMix + shimmerMix);
       colors[i * 3] = mixColor.r;
       colors[i * 3 + 1] = mixColor.g;
       colors[i * 3 + 2] = mixColor.b;
@@ -377,9 +389,9 @@ function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
 
   const material = useMemo(() => {
     const mat = new THREE.PointsMaterial({
-      size: 0.026,
+      size: 0.011,
       transparent: true,
-      opacity: 0.74,
+      opacity: 0.92,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
@@ -392,17 +404,17 @@ function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
   useFrame((state) => {
     if (!pointsRef.current) return;
     const reactive = reactiveRef.current;
-    const breath = 1.0 + Math.sin(state.clock.elapsedTime * 0.16) * 0.018 + reactive.bass * 0.06;
-    pointsRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.045) * 0.1;
-    pointsRef.current.rotation.y = state.clock.elapsedTime * 0.015 + reactive.flow * 0.04;
-    pointsRef.current.position.x = Math.sin(state.clock.elapsedTime * 0.06) * 0.025;
-    pointsRef.current.position.y = 0.03 + Math.cos(state.clock.elapsedTime * 0.05) * 0.02;
-    pointsRef.current.scale.setScalar(breath);
-    material.opacity = 0.68 + reactive.shimmer * 0.14 + reactive.impulse * 0.08;
-    material.size = 0.024 + reactive.shimmer * 0.008 + reactive.impulse * 0.004;
+    const breath = 1.0 + Math.sin(state.clock.elapsedTime * 0.16) * 0.03 + reactive.bass * 0.1;
+    pointsRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.045) * 0.11;
+    pointsRef.current.rotation.y = state.clock.elapsedTime * 0.017 + reactive.flow * 0.045;
+    pointsRef.current.position.x = Math.sin(state.clock.elapsedTime * 0.06) * 0.024;
+    pointsRef.current.position.y = 0.04 + Math.cos(state.clock.elapsedTime * 0.05) * 0.02;
+    pointsRef.current.scale.set(1.32 * breath, 1.46 * breath, 1.24 * breath);
+    material.opacity = 0.88 + reactive.shimmer * 0.1 + reactive.impulse * 0.05;
+    material.size = 0.009 + reactive.shimmer * 0.002 + reactive.impulse * 0.0012;
   });
 
-  return <points ref={pointsRef} args={[geometry, material]} position={[0, 0.03, 0.22]} />;
+  return <points ref={pointsRef} args={[geometry, material]} position={[0, 0.04, 0.22]} />;
 }
 
 export default function Visualizer({ audio, onReactiveState }: VisualizerProps) {
