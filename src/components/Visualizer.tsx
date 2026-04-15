@@ -192,6 +192,65 @@ type VisualizerProps = {
   onReactiveState: (state: ReactiveState) => void;
 };
 
+type QualityProfile = {
+  tier: 'lite' | 'balanced' | 'strong';
+  dpr: [number, number];
+  roseCount: number;
+  dustCount: number;
+  roseSize: number;
+  dustSize: number;
+};
+
+function detectQualityProfile(): QualityProfile {
+  if (typeof window === 'undefined') {
+    return {
+      tier: 'balanced',
+      dpr: [1, 1.35],
+      roseCount: 42000,
+      dustCount: 2400,
+      roseSize: 0.009,
+      dustSize: 0.012,
+    };
+  }
+
+  const memory = 'deviceMemory' in navigator ? Number((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 0) : 0;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  const pixelRatio = window.devicePixelRatio || 1;
+  const touch = matchMedia('(pointer: coarse)').matches;
+  const mobileishViewport = Math.min(window.innerWidth, window.innerHeight) < 820;
+
+  if (touch || mobileishViewport && pixelRatio > 1.5 || memory > 0 && memory <= 4 || cores <= 4) {
+    return {
+      tier: 'lite',
+      dpr: [1, 1.1],
+      roseCount: 18000,
+      dustCount: 1200,
+      roseSize: 0.0115,
+      dustSize: 0.014,
+    };
+  }
+
+  if (memory >= 8 && cores >= 8 && pixelRatio <= 2) {
+    return {
+      tier: 'strong',
+      dpr: [1, 1.6],
+      roseCount: 64000,
+      dustCount: 3200,
+      roseSize: 0.0082,
+      dustSize: 0.0105,
+    };
+  }
+
+  return {
+    tier: 'balanced',
+    dpr: [1, 1.35],
+    roseCount: 42000,
+    dustCount: 2400,
+    roseSize: 0.009,
+    dustSize: 0.012,
+  };
+}
+
 function BackgroundPlane({ audio, onReactiveState, reactiveRef }: VisualizerProps & { reactiveRef: MutableRefObject<ReactiveState> }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const lastUiSyncRef = useRef(0);
@@ -241,11 +300,11 @@ function BackgroundPlane({ audio, onReactiveState, reactiveRef }: VisualizerProp
   );
 }
 
-function DustParticles({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveState> }) {
+function DustParticles({ reactiveRef, quality }: { reactiveRef: MutableRefObject<ReactiveState>; quality: QualityProfile }) {
   const pointsRef = useRef<THREE.Points>(null);
 
   const geometry = useMemo(() => {
-    const count = 2400;
+    const count = quality.dustCount;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -257,12 +316,12 @@ function DustParticles({ reactiveRef }: { reactiveRef: MutableRefObject<Reactive
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     return geo;
-  }, []);
+  }, [quality.dustCount]);
 
   const material = useMemo(() => {
     const mat = new THREE.PointsMaterial({
       color: new THREE.Color('#ddb8c8'),
-      size: 0.012,
+      size: quality.dustSize,
       transparent: true,
       opacity: 0.1,
       blending: THREE.AdditiveBlending,
@@ -271,7 +330,7 @@ function DustParticles({ reactiveRef }: { reactiveRef: MutableRefObject<Reactive
     });
     mat.toneMapped = false;
     return mat;
-  }, []);
+  }, [quality.dustSize]);
 
   useFrame((state) => {
     if (!pointsRef.current) return;
@@ -279,6 +338,7 @@ function DustParticles({ reactiveRef }: { reactiveRef: MutableRefObject<Reactive
     pointsRef.current.rotation.y = state.clock.elapsedTime * 0.006;
     pointsRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.004) * 0.03;
     material.opacity = 0.1 + reactive.shimmer * 0.15 + reactive.impulse * 0.08;
+    material.size = quality.dustSize + reactive.shimmer * 0.0015 + reactive.impulse * 0.001;
   });
 
   return <points ref={pointsRef} position={[0, 0, -0.5]} args={[geometry, material]} />;
@@ -337,11 +397,11 @@ function BloomVeil({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
   return <sprite ref={spriteRef} material={material} position={[0, 0.06, 0.12]} scale={[4.2, 4.9, 1]} />;
 }
 
-function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveState> }) {
+function RoseCloud({ reactiveRef, quality }: { reactiveRef: MutableRefObject<ReactiveState>; quality: QualityProfile }) {
   const pointsRef = useRef<THREE.Points>(null);
 
   const geometry = useMemo(() => {
-    const count = 42000;
+    const count = quality.roseCount;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
@@ -385,11 +445,11 @@ function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     return geo;
-  }, []);
+  }, [quality.roseCount]);
 
   const material = useMemo(() => {
     const mat = new THREE.PointsMaterial({
-      size: 0.011,
+      size: quality.roseSize,
       transparent: true,
       opacity: 0.92,
       blending: THREE.AdditiveBlending,
@@ -399,7 +459,7 @@ function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
     });
     mat.toneMapped = false;
     return mat;
-  }, []);
+  }, [quality.roseSize]);
 
   useFrame((state) => {
     if (!pointsRef.current) return;
@@ -411,7 +471,7 @@ function RoseCloud({ reactiveRef }: { reactiveRef: MutableRefObject<ReactiveStat
     pointsRef.current.position.y = 0.04 + Math.cos(state.clock.elapsedTime * 0.05) * 0.02;
     pointsRef.current.scale.set(1.32 * breath, 1.46 * breath, 1.24 * breath);
     material.opacity = 0.88 + reactive.shimmer * 0.1 + reactive.impulse * 0.05;
-    material.size = 0.009 + reactive.shimmer * 0.002 + reactive.impulse * 0.0012;
+    material.size = quality.roseSize + reactive.shimmer * 0.002 + reactive.impulse * 0.0012;
   });
 
   return <points ref={pointsRef} args={[geometry, material]} position={[0, 0.04, 0.22]} />;
@@ -427,9 +487,10 @@ export default function Visualizer({ audio, onReactiveState }: VisualizerProps) 
     mode: 'autopilot',
     micAvailable: false,
   });
+  const quality = useMemo(() => detectQualityProfile(), []);
 
   return (
-    <Canvas camera={{ position: [0, 0, 5], fov: 38 }} dpr={[1, 1.8]} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
+    <Canvas camera={{ position: [0, 0, 5], fov: 38 }} dpr={quality.dpr} gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}>
       <color attach="background" args={['#080509']} />
       <fog attach="fog" args={['#080509', 5.5, 10.5]} />
       <Environment preset="night" />
@@ -438,9 +499,9 @@ export default function Visualizer({ audio, onReactiveState }: VisualizerProps) 
       <pointLight position={[0, 0.5, 2.5]} intensity={12} distance={7} color="#e8a0b8" />
       <pointLight position={[0.5, -0.2, 2.2]} intensity={6} distance={6} color="#ffe6d4" />
       <BackgroundPlane audio={audio} onReactiveState={onReactiveState} reactiveRef={reactiveRef} />
-      <DustParticles reactiveRef={reactiveRef} />
+      <DustParticles reactiveRef={reactiveRef} quality={quality} />
       <BloomVeil reactiveRef={reactiveRef} />
-      <RoseCloud reactiveRef={reactiveRef} />
+      <RoseCloud reactiveRef={reactiveRef} quality={quality} />
     </Canvas>
   );
 }
