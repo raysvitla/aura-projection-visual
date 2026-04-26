@@ -1,0 +1,14 @@
+.heidi-rite-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #030201;
+  cursor: none;
+  touch-action: none;
+}
+
+.heidi-rite-stage canvas {
+  display: block;
+  width: 100vw !important;
+  height: 100vh !important;
+}
