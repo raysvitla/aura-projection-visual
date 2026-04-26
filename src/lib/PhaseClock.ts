@@ -46,9 +46,9 @@ export class PhaseClock {
     const confirmedMusicChange = this.surgeStartedAt !== null && now - this.surgeStartedAt > 4200;
     const hitCeiling = elapsed > phase.maxMs;
 
-    if ((confirmedMusicChange || hitCeiling) && this.phaseIndex < RITE_PHASES.length - 1) {
+    if (confirmedMusicChange || hitCeiling) {
       this.previousPhaseIndex = this.phaseIndex;
-      this.phaseIndex += 1;
+      this.phaseIndex = (this.phaseIndex + 1) % RITE_PHASES.length;
       this.phaseStartedAt = now;
       this.surgeStartedAt = null;
     }
