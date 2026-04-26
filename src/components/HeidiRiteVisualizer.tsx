@@ -1098,7 +1098,7 @@ function GirasolBookend({ runtime, radius }: { runtime: RuntimeRef; radius: numb
       groupRef.current.scale.setScalar(logoScale);
       groupRef.current.visible = opacity > 0.01;
     }
-    for (const material of materialsRef.current) material.opacity = opacity * 0.32;
+    for (const material of materialsRef.current) material.opacity = opacity * 0.18;
     spinRingMaterials.forEach((material, index) => {
       material.opacity = clamp(opacity * (index === 1 ? 0.72 : 0.58) + state.onsetPulse * 0.1, 0, 0.96);
     });
