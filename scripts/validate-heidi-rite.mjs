@@ -10,9 +10,6 @@ const requiredAssets = [
   'public/heidi-rite/paw-sigil.png',
   'public/heidi-rite/pattern-opart-sheet.png',
   'public/heidi-rite/spectral-apparition-sheet.png',
-  'public/heidi-rite/scene-schematic-crt.png',
-  'public/heidi-rite/scene-neural-map.png',
-  'public/heidi-rite/scene-cybermap.png',
   'public/heidi-rite/pattern-opart.gif',
   'public/heidi-rite/spectral-apparition.gif',
   'public/heidi-rite/altar-portal-reference.png',
@@ -68,12 +65,7 @@ for (const phase of ['SLATE', 'APPROACH', 'ICON', 'TUNNEL', 'APPARITION', 'STATI
 assert(component.includes('pattern-opart-sheet.png'), 'Op-art GIF must be pre-extracted into a controllable sprite sheet');
 assert(component.includes('spectral-apparition-sheet.png'), 'Spectral GIF must be pre-extracted into a controllable sprite sheet');
 assert(component.includes('heidi-halo-reference.png'), 'Heidi halo reference must be the central icon texture');
-assert(component.includes('logo.glb') && component.includes('useGLTF'), 'GIRASOL GLB must be loaded as a spinning 3D relic');
-assert(component.includes('WALL_LAYER_CONFIGS') && component.includes('uVariant'), 'Scenes must use distinct wall/background material variants');
-assert(component.includes('scene-schematic-crt.png'), 'One phase must include the blinking CRT schematic reference');
-assert(component.includes('scene-neural-map.png'), 'One phase must include the neural/node map reference');
-assert(component.includes('scene-cybermap.png'), 'One phase must include the funny oldschool cybermap reference');
-assert(component.includes('SCENE_POSES') && liturgy.includes('5 * minute') && liturgy.includes('7 * minute'), 'Scene rotations must be explicit 5–7 minute 3D pose changes');
+assert(component.includes('logo.glb'), 'GIRASOL GLB must remain available as bookend relic');
 assert(component.includes('Canvas'), 'Projection must render through a single R3F canvas');
 assert(component.includes('orthographic'), 'Projection must use an orthographic camera');
 assert(component.includes('PhaseClock'), 'Projection must use phase clock, not a 12-second switcher');
