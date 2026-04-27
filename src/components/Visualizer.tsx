@@ -978,13 +978,6 @@ useGLTF.preload(LOGO_SRC);
 
 export default function Visualizer({ audio, onReactiveState, backgroundMode }: VisualizerProps) {
   const reactiveRef = useRef<ReactiveState>({
-    sub: 0.2,
-    lowMid: 0.22,
-    high: 0.1,
-    rms: 0.2,
-    spectralFlux: 0,
-    onset: false,
-    silenceMs: 0,
     bass: 0.2,
     flow: 0.22,
     shimmer: 0.1,
