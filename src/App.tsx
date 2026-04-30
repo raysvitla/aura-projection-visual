@@ -2,7 +2,7 @@ import { Maximize2, Mic, MicOff, Radio, Sparkles } from 'lucide-react';
 
 type BackgroundMode = 'auto' | 'legacy' | 'rose';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Visualizer from './components/Visualizer';
 import { AudioEngine, ReactiveState } from './lib/AudioEngine';
 
@@ -16,29 +16,15 @@ const initialReactiveState: ReactiveState = {
   micAvailable: false,
 };
 
-const creatorLinks = [
-  { label: 'Embassy', href: 'https://embassy.svit.la' },
-  { label: 'svit.la', href: 'https://svit.la' },
-  { label: 'GitHub', href: 'https://github.com/raysvitla' },
-  { label: 'X', href: 'https://x.com/ray_svitla' },
-];
 
 export default function App() {
   const audio = useMemo(() => new AudioEngine(), []);
   const [reactive, setReactive] = useState<ReactiveState>(initialReactiveState);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [uiVisible, setUiVisible] = useState(true);
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('auto');
   const [status, setStatus] = useState('Autopilot is always running. Mic adds soft movement; any key nudges the scene.');
-  const idleTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    const showUi = () => {
-      setUiVisible(true);
-      if (idleTimer.current) window.clearTimeout(idleTimer.current);
-      idleTimer.current = window.setTimeout(() => setUiVisible(false), 2600);
-    };
-
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -47,40 +33,30 @@ export default function App() {
       if (event.key === '1') {
         setBackgroundMode('auto');
         setStatus('Background mode: auto. Slowly crossfading between scenes.');
-        showUi();
         return;
       }
 
       if (event.key === '2') {
         setBackgroundMode('legacy');
         setStatus('Background mode: silk. Locked to the darker cloth scene.');
-        showUi();
         return;
       }
 
       if (event.key === '3') {
         setBackgroundMode('rose');
         setStatus('Background mode: rose. Locked to the spectral bloom scene.');
-        showUi();
         return;
       }
 
       audio.triggerImpulse(0.28);
-      showUi();
     };
 
-    window.addEventListener('mousemove', showUi);
-    window.addEventListener('pointerdown', showUi);
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    showUi();
 
     return () => {
-      window.removeEventListener('mousemove', showUi);
-      window.removeEventListener('pointerdown', showUi);
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      if (idleTimer.current) window.clearTimeout(idleTimer.current);
       audio.disableMic();
     };
   }, [audio]);
@@ -129,7 +105,7 @@ export default function App() {
           inset: 0,
           pointerEvents: 'none',
           transition: 'opacity 420ms ease',
-          opacity: uiVisible || !isFullscreen ? 1 : 0,
+          opacity: isFullscreen ? 0 : 1,
         }}
       >
         <div
@@ -158,7 +134,7 @@ export default function App() {
           }}
         >
           <div style={{ fontSize: 12, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,243,238,0.6)' }}>AURA</div>
-          <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Projection visual by Ray Svitla. Dark, slow, audio-reactive.</div>
+          <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Dark, slow, audio-reactive projection visual.</div>
           <div style={{ fontSize: 12, color: 'rgba(255,243,238,0.48)', lineHeight: 1.5 }}>{status}</div>
           <div style={{ fontSize: 11, color: 'rgba(255,243,238,0.42)' }}>1 auto · 2 silk · 3 rose</div>
         </div>
@@ -210,28 +186,6 @@ export default function App() {
             {isFullscreen && <Chip label="fullscreen" active />}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', pointerEvents: 'auto', fontSize: 12 }}>
-            <span style={{ color: 'rgba(255,243,238,0.72)', fontWeight: 600, marginRight: 2 }}>by Ray Svitla</span>
-            {creatorLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  color: 'rgba(255,243,238,0.9)',
-                  textDecoration: 'none',
-                  border: '1px solid rgba(255,255,255,0.16)',
-                  borderRadius: 999,
-                  padding: '8px 11px',
-                  background: 'rgba(14,10,16,0.5)',
-                  backdropFilter: 'blur(16px)',
-                }}
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
         </div>
       </div>
     </div>
