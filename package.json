@@ -2,6 +2,8 @@
   "name": "aura-projection-visual",
   "private": true,
   "version": "0.2.0",
+  "description": "A dark, slow, audio-reactive WebGL projection visual by Ray Svitla.",
+  "homepage": "https://raysvitla.github.io/aura-projection-visual/",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 4173",

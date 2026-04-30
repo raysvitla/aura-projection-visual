@@ -16,13 +16,20 @@ const initialReactiveState: ReactiveState = {
   micAvailable: false,
 };
 
+const creatorLinks = [
+  { label: 'Embassy', href: 'https://embassy.svit.la' },
+  { label: 'svit.la', href: 'https://svit.la' },
+  { label: 'GitHub', href: 'https://github.com/raysvitla' },
+  { label: 'X', href: 'https://x.com/ray_svitla' },
+];
+
 export default function App() {
   const audio = useMemo(() => new AudioEngine(), []);
   const [reactive, setReactive] = useState<ReactiveState>(initialReactiveState);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [uiVisible, setUiVisible] = useState(true);
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('auto');
-  const [status, setStatus] = useState('Autopilot running. Mic adds soft movement; keys add little nudges.');
+  const [status, setStatus] = useState('Autopilot is always running. Mic adds soft movement; any key nudges the scene.');
   const idleTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -39,21 +46,21 @@ export default function App() {
 
       if (event.key === '1') {
         setBackgroundMode('auto');
-        setStatus('Background mode: auto. Switching between worlds every ~7 minutes.');
+        setStatus('Background mode: auto. Slowly crossfading between scenes.');
         showUi();
         return;
       }
 
       if (event.key === '2') {
         setBackgroundMode('legacy');
-        setStatus('Background mode: legacy. Locked to the dfd4f94 world.');
+        setStatus('Background mode: silk. Locked to the darker cloth scene.');
         showUi();
         return;
       }
 
       if (event.key === '3') {
         setBackgroundMode('rose');
-        setStatus('Background mode: rose. Locked to the current live background.');
+        setStatus('Background mode: rose. Locked to the spectral bloom scene.');
         showUi();
         return;
       }
@@ -81,7 +88,7 @@ export default function App() {
   const toggleMic = async () => {
     if (audio.getMode() === 'mic') {
       audio.disableMic();
-      setStatus('Mic off. Back to autopilot — still sexy, just less obedient.');
+      setStatus('Mic off. Back to autopilot.');
       setReactive((previous) => ({ ...previous, mode: 'autopilot' }));
       return;
     }
@@ -91,7 +98,7 @@ export default function App() {
       setStatus('Mic on. Bass breathes, mids steer the fabric, highs tickle the edges.');
     } catch (error) {
       console.error(error);
-      setStatus('Mic blocked or unavailable. Staying in autopilot instead of dying like a dumb app.');
+      setStatus('Mic blocked or unavailable. Staying in autopilot.');
       audio.disableMic();
     }
   };
@@ -107,9 +114,9 @@ export default function App() {
 
   const setMode = (mode: BackgroundMode) => {
     setBackgroundMode(mode);
-    if (mode === 'auto') setStatus('Background mode: auto. Switching between worlds every ~7 minutes.');
-    if (mode === 'legacy') setStatus('Background mode: legacy. Locked to the dfd4f94 world.');
-    if (mode === 'rose') setStatus('Background mode: rose. Locked to the current live background.');
+    if (mode === 'auto') setStatus('Background mode: auto. Slowly crossfading between scenes.');
+    if (mode === 'legacy') setStatus('Background mode: silk. Locked to the darker cloth scene.');
+    if (mode === 'rose') setStatus('Background mode: rose. Locked to the spectral bloom scene.');
   };
 
   return (
@@ -122,7 +129,7 @@ export default function App() {
           inset: 0,
           pointerEvents: 'none',
           transition: 'opacity 420ms ease',
-          opacity: uiVisible ? 1 : 0,
+          opacity: uiVisible || !isFullscreen ? 1 : 0,
         }}
       >
         <div
@@ -141,13 +148,19 @@ export default function App() {
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
-            maxWidth: 420,
+            maxWidth: 440,
+            padding: '14px 16px',
+            borderRadius: 18,
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(8,5,9,0.62)',
+            backdropFilter: 'blur(18px)',
+            boxShadow: '0 18px 48px rgba(0,0,0,0.26)',
           }}
         >
           <div style={{ fontSize: 12, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,243,238,0.6)' }}>AURA</div>
-          <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Spectral bloom. Dark, slow, projector-safe.</div>
+          <div style={{ fontSize: 15, color: 'rgba(255,243,238,0.82)' }}>Projection visual by Ray Svitla. Dark, slow, audio-reactive.</div>
           <div style={{ fontSize: 12, color: 'rgba(255,243,238,0.48)', lineHeight: 1.5 }}>{status}</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,243,238,0.42)' }}>1 auto · 2 legacy · 3 rose</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,243,238,0.42)' }}>1 auto · 2 silk · 3 rose</div>
         </div>
 
         <div
@@ -164,7 +177,7 @@ export default function App() {
         >
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <ModeButton active={backgroundMode === 'auto'} onClick={() => setMode('auto')} label="auto" />
-            <ModeButton active={backgroundMode === 'legacy'} onClick={() => setMode('legacy')} label="legacy" />
+            <ModeButton active={backgroundMode === 'legacy'} onClick={() => setMode('legacy')} label="silk" />
             <ModeButton active={backgroundMode === 'rose'} onClick={() => setMode('rose')} label="rose" />
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -197,10 +210,27 @@ export default function App() {
             {isFullscreen && <Chip label="fullscreen" active />}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <Metric label="bass" value={reactive.bass} />
-            <Metric label="flow" value={reactive.flow} />
-            <Metric label="acid" value={reactive.shimmer} />
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', pointerEvents: 'auto', fontSize: 12 }}>
+            <span style={{ color: 'rgba(255,243,238,0.72)', fontWeight: 600, marginRight: 2 }}>by Ray Svitla</span>
+            {creatorLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: 'rgba(255,243,238,0.9)',
+                  textDecoration: 'none',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                  borderRadius: 999,
+                  padding: '8px 11px',
+                  background: 'rgba(14,10,16,0.5)',
+                  backdropFilter: 'blur(16px)',
+                }}
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
         </div>
       </div>
@@ -286,30 +316,6 @@ function Chip({ label, active = false, icon }: ChipProps) {
     >
       {icon}
       <span>{label}</span>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  const width = `${Math.round(Math.max(10, Math.min(100, value * 100)))}%`;
-
-  return (
-    <div style={{ minWidth: 84, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-        <span>{label}</span>
-        <span>{Math.round(value * 100)}</span>
-      </div>
-      <div style={{ width: 84, height: 4, borderRadius: 999, background: 'rgba(255,255,255,0.09)', overflow: 'hidden' }}>
-        <div
-          style={{
-            width,
-            height: '100%',
-            borderRadius: 999,
-            background: 'linear-gradient(90deg, rgba(255,158,201,0.9), rgba(117,255,235,0.95))',
-            boxShadow: '0 0 14px rgba(122,255,232,0.32)',
-          }}
-        />
-      </div>
     </div>
   );
 }
